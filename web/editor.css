@@ -1,0 +1,91 @@
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #f4f1ea;
+  color: #1f1f1f;
+  font-family: "Segoe UI", "Calibri", sans-serif;
+}
+
+#doc {
+  box-sizing: border-box;
+  min-height: 100vh;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 4rem;
+  background: #fff;
+  outline: none;
+  line-height: 1.55;
+  font-size: 1.05rem;
+}
+
+#doc:empty::before {
+  content: "Open een markdown-bestand of begin te typen…";
+  color: #888;
+}
+
+#doc h1,
+#doc h2,
+#doc h3 {
+  line-height: 1.25;
+  margin: 1.4em 0 0.5em;
+}
+
+#doc h1 {
+  font-size: 2rem;
+  border-bottom: 1px solid #e6e1d6;
+  padding-bottom: 0.25em;
+}
+
+#doc h2 {
+  font-size: 1.5rem;
+}
+
+#doc h3 {
+  font-size: 1.2rem;
+}
+
+#doc p {
+  margin: 0.75em 0;
+}
+
+#doc a {
+  color: #0b57d0;
+}
+
+#doc ul,
+#doc ol {
+  padding-left: 1.4em;
+}
+
+#doc pre {
+  background: #f6f3ec;
+  border-radius: 6px;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+}
+
+#doc code {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.92em;
+}
+
+.mermaid-widget {
+  user-select: none;
+  margin: 1.2em 0;
+  padding: 1em;
+  border: 1px solid #e0d9cc;
+  border-radius: 8px;
+  background: #faf8f4;
+  overflow-x: auto;
+}
+
+.mermaid-error {
+  color: #8b1e1e;
+  white-space: pre-wrap;
+  margin: 0;
+}

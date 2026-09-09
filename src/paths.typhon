@@ -1,0 +1,56 @@
+# Resolve web/ and samples/ in dev (cwd is src/ during Typhon run) and in the packed exe.
+
+from pathlib import Path
+import os
+import sys
+import PyQt6
+
+package function Path assetRoot() {
+    if (hasattr(sys, "_MEIPASS")) {
+        return Path(str(getattr(sys, "_MEIPASS")))
+    }
+    Path cwd = Path.cwd().resolve()
+    Path localHtml = cwd.joinpath("web", "editor.html")
+    if (localHtml.is_file()) {
+        return cwd
+    }
+    Path parent = cwd.parent
+    Path parentHtml = parent.joinpath("web", "editor.html")
+    if (parentHtml.is_file()) {
+        return parent
+    }
+    return parent
+}
+
+package function prepareWebEngine() {
+    Path qtRoot = Path(PyQt6.__file__).resolve().parent.joinpath("Qt6")
+    Path qtBin = qtRoot.joinpath("bin")
+    if (qtBin.is_dir()) {
+        if (hasattr(os, "add_dll_directory")) {
+            os.add_dll_directory(str(qtBin))
+        }
+        string current = ""
+        nullable<string> existing = os.getenv("PATH")
+        if (existing != null) {
+            current = existing
+        }
+        os.environ["PATH"] = str(qtBin) + os.pathsep + current
+        Path proc = qtBin.joinpath("QtWebEngineProcess.exe")
+        if (proc.is_file()) {
+            os.environ["QTWEBENGINEPROCESS_PATH"] = str(proc)
+        }
+    }
+    Path resources = qtRoot.joinpath("resources")
+    if (resources.is_dir()) {
+        os.environ["QTWEBENGINE_RESOURCES_PATH"] = str(resources)
+    }
+    Path locales = qtRoot.joinpath("translations").joinpath("qtwebengine_locales")
+    if (locales.is_dir()) {
+        os.environ["QTWEBENGINE_LOCALES_PATH"] = str(locales)
+    }
+    if (os.getenv("QTWEBENGINE_CHROMIUM_FLAGS") == null) {
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --no-sandbox"
+    }
+}
+
+prepareWebEngine()

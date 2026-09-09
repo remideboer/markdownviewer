@@ -1,0 +1,71 @@
+# Open document: path, markdown text, and dirty flag (content vs last save).
+
+from pathlib import Path
+
+package class MarkdownDocument {
+    private string content
+    private string savedContent
+    private nullable<string> filePath
+
+    public constructor() {
+        this.content = ""
+        this.savedContent = ""
+        this.filePath = null
+    }
+
+    public string getContent() {
+        return this.content
+    }
+
+    public setContent(string markdown) {
+        this.content = markdown
+    }
+
+    public bool isDirty() {
+        return this.content != this.savedContent
+    }
+
+    public nullable<string> getFilePath() {
+        return this.filePath
+    }
+
+    public string displayName() {
+        nullable<string> path = this.filePath
+        if (path == null) {
+            return "Naamloos"
+        }
+        return Path(path).name
+    }
+
+    public bool loadFrom(string path) {
+        Path p = Path(path)
+        if (!p.is_file()) {
+            return false
+        }
+        this.filePath = path
+        this.content = p.read_text(encoding="utf-8-sig")
+        this.savedContent = this.content
+        return true
+    }
+
+    public bool save() {
+        nullable<string> path = this.filePath
+        if (path == null) {
+            return false
+        }
+        Path(path).write_text(this.content, encoding="utf-8")
+        this.savedContent = this.content
+        return true
+    }
+
+    public bool saveTo(string path) {
+        this.filePath = path
+        return this.save()
+    }
+
+    public clear() {
+        this.content = ""
+        this.savedContent = ""
+        this.filePath = null
+    }
+}

@@ -1,0 +1,45 @@
+# Roundtrip load/save without Qt.
+
+from pathlib import Path
+from document import MarkdownDocument
+import tempfile
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== document io ===")
+
+string folder = tempfile.mkdtemp()
+string path = str(Path(folder).joinpath("note.md"))
+Path(path).write_text("# Hello\n\n**world**\n", encoding="utf-8")
+
+MarkdownDocument doc = MarkdownDocument()
+assertTrue("starts clean", doc.isDirty() == false)
+assertTrue("starts unnamed", doc.displayName() == "Naamloos")
+assertTrue("loads", doc.loadFrom(path))
+assertTrue("content", doc.getContent().find("# Hello") >= 0)
+assertTrue("clean after load", doc.isDirty() == false)
+assertTrue("name", doc.displayName() == "note.md")
+
+doc.setContent("# Hello\n\nedited\n")
+assertTrue("dirty after edit", doc.isDirty())
+assertTrue("saves", doc.save())
+assertTrue("clean after save", doc.isDirty() == false)
+
+string roundtrip = Path(path).read_text(encoding="utf-8")
+assertTrue("file written", roundtrip.find("edited") >= 0)
+
+string other = str(Path(folder).joinpath("other.md"))
+assertTrue("save as", doc.saveTo(other))
+assertTrue("new name", doc.displayName() == "other.md")
+
+doc.clear()
+assertTrue("cleared name", doc.displayName() == "Naamloos")
+assertTrue("cleared clean", doc.isDirty() == false)
+
+print("=== document io done ===")

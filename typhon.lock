@@ -1,0 +1,39 @@
+{
+  "deps_fingerprint": "0bebc51fa1303b8e731e16eff498edff640c7cfc9de515652d3ea02c9b0bfefb",
+  "index_url": "https://pypi.org/simple",
+  "packages": [
+    {
+      "name": "PyQt6",
+      "sha256": "bd11b459c54dca068e988a42cf838303334f0d441b9d16d92ae6719fcb5ac6ba",
+      "url": "https://files.pythonhosted.org/packages/6f/85/dd9f03d78d87460e109e0121cd6201c5802bdd655656bf2780e964870fea/pyqt6-6.11.0-cp310-abi3-win_amd64.whl",
+      "version": "6.11.0"
+    },
+    {
+      "name": "PyQt6-Qt6",
+      "sha256": "4b424ed1babbef07133eb2a4174c56c848d518767bca8e759aca2c8c9c313636",
+      "url": "https://files.pythonhosted.org/packages/f6/56/62457dd9b5738f65b9fb4ac6b3120bc0bfa0bc335857fdd456b94b0a6079/pyqt6_qt6-6.11.2-py3-none-win_amd64.whl",
+      "version": "6.11.2"
+    },
+    {
+      "name": "PyQt6_sip",
+      "sha256": "61faaad2a4c5dc08e8b0abbae34a66f035c921cf085ae53f67a3ddcfec1d0f22",
+      "url": "https://files.pythonhosted.org/packages/66/3c/9420e8756c3b32bbd5ce2a828292ce43b762ab66cc64de2c2c1f90b998e2/pyqt6_sip-13.12.0-cp311-cp311-win_amd64.whl",
+      "version": "13.12.0"
+    },
+    {
+      "name": "PyQt6-WebEngine",
+      "sha256": "5596ea8f7fd94a6b443c47f3c12dac619bedf5fabb646d2b8b4de1d73ec531cb",
+      "url": "https://files.pythonhosted.org/packages/d4/15/27a18e7124f85eeadd48452f96104a5a231f0ad97ab5c10e16d87a319ccb/pyqt6_webengine-6.11.0-cp310-abi3-win_amd64.whl",
+      "version": "6.11.0"
+    },
+    {
+      "name": "PyQt6-WebEngine-Qt6",
+      "sha256": "af13f13e6620de6d904b268343d901caeb7a39b15ead92f5dde8cdd69dac179b",
+      "url": "https://files.pythonhosted.org/packages/24/db/06ba5859dcee54c77f2e4a547207177bb00747e4db7adcd1b70706db14bc/pyqt6_webengine_qt6-6.11.2-py3-none-win_amd64.whl",
+      "version": "6.11.2"
+    }
+  ],
+  "platform": "win-amd64",
+  "python": "3.11",
+  "schema": 1
+}

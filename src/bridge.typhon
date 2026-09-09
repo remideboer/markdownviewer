@@ -1,0 +1,14 @@
+# JS → Python via QWebChannel. No constructor: @pyqtSlot must not follow a constructor
+# (Typhon emit would attach the decorator to __init__).
+
+from PyQt6.QtCore import QObject, pyqtSlot
+from document import MarkdownDocument
+
+package class EditorBridge inherits QObject {
+    public MarkdownDocument doc
+
+    @pyqtSlot(str)
+    public setMarkdown(string markdown) {
+        this.doc.setContent(markdown)
+    }
+}
