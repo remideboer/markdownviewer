@@ -28,4 +28,4 @@ if getattr(sys, "frozen", False):
             os.environ["QTWEBENGINE_LOCALES_PATH"] = str(folder)
             break
     if "QTWEBENGINE_CHROMIUM_FLAGS" not in os.environ:
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --no-sandbox"
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--no-sandbox"

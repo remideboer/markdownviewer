@@ -3,9 +3,9 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $iss = Join-Path $root "pack\installer.iss"
 $candidates = @(
-    Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe",
-    Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe",
-    Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"
+    (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+    (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
+    (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
 )
 $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) {
@@ -19,4 +19,4 @@ if (-not (Test-Path $exe)) {
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit $LASTEXITCODE"
 }
-Write-Host "Installer: $root\dist\MarkdownViewer-Setup-1.0.0.exe"
+Write-Host "Installer: $root\dist\MarkdownViewer-Setup-1.0.1.exe"

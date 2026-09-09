@@ -869,10 +869,56 @@
   }
 
   function mermaidTargets(root) {
-    if (root.classList && root.classList.contains("mermaid-widget")) {
+    if (!root || !root.classList) {
+      return [];
+    }
+    if (root.classList.contains("mermaid-widget")) {
       return [root];
     }
+    if (!root.querySelectorAll) {
+      return [];
+    }
     return Array.prototype.slice.call(root.querySelectorAll(".mermaid-widget"));
+  }
+
+  var mermaidObserver = null;
+
+  function mermaidObserverInstance() {
+    if (mermaidObserver) {
+      return mermaidObserver;
+    }
+    mermaidObserver = new IntersectionObserver(
+      function (entries) {
+        var i = 0;
+        while (i < entries.length) {
+          var entry = entries[i];
+          if (entry.isIntersecting) {
+            mermaidObserver.unobserve(entry.target);
+            renderMermaidWidgets(entry.target);
+          }
+          i += 1;
+        }
+      },
+      { root: null, rootMargin: "240px 0px", threshold: 0 }
+    );
+    return mermaidObserver;
+  }
+
+  function observeMermaidWidgets(root) {
+    if (!root || typeof IntersectionObserver === "undefined") {
+      return renderMermaidWidgets(root);
+    }
+    var observer = mermaidObserverInstance();
+    var nodes = mermaidTargets(root);
+    var i = 0;
+    while (i < nodes.length) {
+      observer.observe(nodes[i]);
+      i += 1;
+    }
+    if (window.MermaidEdit) {
+      window.MermaidEdit.bind(root);
+    }
+    return Promise.resolve();
   }
 
   function renderMermaidWidgets(root) {
@@ -1027,7 +1073,7 @@
     slugifyHeadings(article);
     rewriteImages(article);
     highlightAll(article);
-    return renderMermaidWidgets(article).then(function () {
+    return observeMermaidWidgets(article).then(function () {
       applying = false;
       resetHistory();
     });

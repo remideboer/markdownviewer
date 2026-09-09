@@ -49,7 +49,11 @@ package function prepareWebEngine() {
         os.environ["QTWEBENGINE_LOCALES_PATH"] = str(locales)
     }
     if (os.getenv("QTWEBENGINE_CHROMIUM_FLAGS") == null) {
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --no-sandbox"
+        if (getattr(sys, "frozen", false)) {
+            os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--no-sandbox"
+        } else {
+            os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --no-sandbox"
+        }
     }
 }
 

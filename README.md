@@ -62,9 +62,16 @@ To wrap that folder in a Windows installer (Inno Setup 6):
 powershell -File tools/make-installer.ps1
 ```
 
-The setup exe is written to `dist/MarkdownViewer-Setup-1.0.0.exe`.
+The setup exe is written to `dist/MarkdownViewer-Setup-1.0.1.exe`.
 
-Qt WebEngine needs that folder layout (it ships `QtWebEngineProcess` next to the app). The build is large, on the order of hundreds of megabytes.
+Qt WebEngine needs that folder layout (it ships `QtWebEngineProcess` next to the app). The packed build is large because it includes Chromium.
+
+The packed exe uses GPU compositing. If the window fails to open on a given machine, start it with software raster:
+
+```powershell
+$env:QTWEBENGINE_CHROMIUM_FLAGS = "--disable-gpu --no-sandbox"
+.\dist\MarkdownViewer\MarkdownViewer.exe
+```
 
 ## Tests
 

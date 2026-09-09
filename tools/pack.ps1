@@ -27,4 +27,16 @@ if (-not $site) {
 $env:PYTHONPATH = "$site;$transpilerRoot;$root\.transpiled"
 python -m pip install --quiet pyinstaller
 python -m PyInstaller --noconfirm --clean --distpath "$root\dist" --workpath "$root\build" pack/markdownviewer.spec
-Write-Host "Built: $root\dist\MarkdownViewer\MarkdownViewer.exe"
+$out = Join-Path $root "dist\MarkdownViewer"
+Write-Host "Built: $out\MarkdownViewer.exe"
+Get-ChildItem $out | ForEach-Object {
+    if ($_.PSIsContainer) {
+        $bytes = (Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue |
+            Measure-Object Length -Sum).Sum
+    } else {
+        $bytes = $_.Length
+    }
+    [PSCustomObject]@{ Name = $_.Name; MB = [math]::Round(($bytes / 1MB), 1) }
+} | Sort-Object MB -Descending | Select-Object -First 15 | Format-Table -AutoSize
+$total = (Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum
+Write-Host ("Unpacked: {0:N1} MB" -f ($total / 1MB))

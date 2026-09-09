@@ -70,11 +70,11 @@ package class EditorTab inherits QWidget {
         )
         this.view.settings().setAttribute(
             QWebEngineSettings.WebAttribute.WebGLEnabled,
-            false
+            true
         )
         this.view.settings().setAttribute(
             QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled,
-            false
+            true
         )
         this.view.settings().setAttribute(
             QWebEngineSettings.WebAttribute.ScrollAnimatorEnabled,

@@ -1,6 +1,6 @@
 ; Inno Setup 6 — compile after tools/pack.ps1
 #define AppName "MarkdownViewer"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #define AppPublisher "MarkdownViewer"
 #define AppExeName "MarkdownViewer.exe"
 

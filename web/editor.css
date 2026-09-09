@@ -199,6 +199,7 @@ body {
   .mermaid-widget {
     border: 1px solid #ccc;
     background: #fff;
+    content-visibility: visible;
   }
 }
 
@@ -211,11 +212,15 @@ body {
   background: #faf8f4;
   overflow-x: auto;
   cursor: pointer;
+  contain: layout paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
 }
 
 .mermaid-widget.mmd-editing {
   cursor: default;
   padding: 0.65em 0.75em 0.85em;
+  content-visibility: visible;
 }
 
 .mermaid-error {
