@@ -62,6 +62,14 @@
       implements: nl ? "Implementeert" : "Implements",
       assoc: nl ? "Associatie" : "Association",
       uses: nl ? "Gebruikt" : "Uses",
+      source: nl ? "Tekst" : "Text",
+      visual: nl ? "Diagram" : "Diagram",
+      sourceHint: nl
+        ? "Bewerk de mermaid-bron. Kies Diagram om terug te gaan."
+        : "Edit the mermaid source. Choose Diagram to return.",
+      sourceError: nl
+        ? "Ongeldige mermaid. Herstel de tekst of blijf in tekstmodus."
+        : "Invalid mermaid. Fix the text or stay in text mode.",
     };
   }
 
@@ -669,13 +677,24 @@
       return;
     }
     var session = active;
-    flushLabels(session);
+    if (session.sourceArea) {
+      session.widget.setAttribute(
+        "data-mermaid",
+        encodeURIComponent(session.sourceArea.value)
+      );
+    } else {
+      flushLabels(session);
+    }
     active = null;
     session.widget.classList.remove("mmd-editing");
     session.widget.removeAttribute("tabindex");
     if (rerender) {
       if (session.dirty) {
-        persist(session);
+        if (!session.sourceArea) {
+          persist(session);
+        } else {
+          hooks.scheduleNotify();
+        }
       }
       hooks.renderWidget(session.widget).then(function () {
         bindWidget(session.widget);
@@ -683,7 +702,74 @@
     }
   }
 
-  function shell(widget, hintText) {
+  function switchToSource(session) {
+    if (!session || session.sourceArea) {
+      return;
+    }
+    flushLabels(session);
+    if (session.dirty) {
+      persist(session);
+    }
+    var src = decodeURIComponent(session.widget.getAttribute("data-mermaid") || "");
+    openSourceEditor(session.widget, src);
+  }
+
+  function switchToVisual(session) {
+    if (!session || !session.sourceArea) {
+      return;
+    }
+    var src = session.sourceArea.value;
+    if (!Kinds.detectKind(src)) {
+      session.hint.textContent = tr().sourceError;
+      return;
+    }
+    session.widget.setAttribute("data-mermaid", encodeURIComponent(src));
+    session.dirty = true;
+    hooks.scheduleNotify();
+    active = null;
+    openEditor(session.widget);
+  }
+
+  function openSourceEditor(widget, src) {
+    var strings = tr();
+    var ui = shell(widget, strings.sourceHint, strings.visual);
+    var area = document.createElement("textarea");
+    area.className = "mmd-source";
+    area.value = src;
+    area.setAttribute("spellcheck", "false");
+    ui.root.appendChild(area);
+    var parsed = Kinds.parseDocument(src);
+    var session = {
+      mode: "source",
+      widget: widget,
+      graph: parsed || { kind: "flowchart", nodes: [], edges: [], extras: {} },
+      sourceArea: area,
+      hint: ui.hint,
+      dirty: false,
+      redraw: function () {},
+    };
+    active = session;
+    addBtn(ui.bar, "done", strings.done).addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeEditor(true);
+    });
+    area.addEventListener("input", function () {
+      session.widget.setAttribute("data-mermaid", encodeURIComponent(area.value));
+      session.dirty = true;
+      hooks.scheduleNotify();
+    });
+    area.addEventListener("mousedown", function (event) {
+      event.stopPropagation();
+    });
+    area.addEventListener("keydown", function (event) {
+      event.stopPropagation();
+    });
+    widget.focus();
+    area.focus();
+  }
+
+  function shell(widget, hintText, sourceLabel) {
     widget.classList.add("mmd-editing");
     widget.tabIndex = 0;
     widget.innerHTML = "";
@@ -691,6 +777,20 @@
     root.className = "mmd-edit";
     var bar = document.createElement("div");
     bar.className = "mmd-edit-bar";
+    var strings = tr();
+    var sourceBtn = addBtn(bar, "source", sourceLabel || strings.source);
+    sourceBtn.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!active || active.widget !== widget) {
+        return;
+      }
+      if (active.sourceArea) {
+        switchToVisual(active);
+      } else {
+        switchToSource(active);
+      }
+    });
     var hint = document.createElement("div");
     hint.className = "mmd-edit-hint";
     hint.textContent = hintText;
@@ -1335,7 +1435,8 @@
       return;
     }
     var editing = event.target && event.target.isContentEditable;
-    if (editing || (event.target && event.target.tagName === "INPUT")) {
+    var tag = event.target && event.target.tagName;
+    if (editing || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {

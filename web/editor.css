@@ -160,6 +160,22 @@ body {
   margin-bottom: 0.5em;
 }
 
+.mmd-source {
+  display: block;
+  width: 100%;
+  min-height: 14em;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.6em 0.7em;
+  border: 1px dashed #e0d9cc;
+  border-radius: 6px;
+  background: #fff;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 .mmd-canvas {
   position: relative;
   min-height: 180px;
