@@ -68,6 +68,18 @@ package class EditorTab inherits QWidget {
             QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,
             true
         )
+        this.view.settings().setAttribute(
+            QWebEngineSettings.WebAttribute.WebGLEnabled,
+            false
+        )
+        this.view.settings().setAttribute(
+            QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled,
+            false
+        )
+        this.view.settings().setAttribute(
+            QWebEngineSettings.WebAttribute.ScrollAnimatorEnabled,
+            false
+        )
         this.view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         this.view.loadFinished.connect(this.onEditorLoaded)
         QVBoxLayout layout = QVBoxLayout(this)

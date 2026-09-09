@@ -958,7 +958,16 @@
           });
           row.addEventListener("click", function () {
             session.selectedIndex = index;
-            draw();
+            var rows = list.querySelectorAll(".mmd-row");
+            var r = 0;
+            while (r < rows.length) {
+              if (r === index) {
+                rows[r].classList.add("is-selected");
+              } else {
+                rows[r].classList.remove("is-selected");
+              }
+              r += 1;
+            }
           });
           list.appendChild(row);
         })(i);
@@ -1179,6 +1188,18 @@
       },
     };
     active = session;
+    function markSelected() {
+      var rows = list.children;
+      var r = 0;
+      while (r < rows.length) {
+        if (r === session.selectedIndex) {
+          rows[r].classList.add("is-selected");
+        } else {
+          rows[r].classList.remove("is-selected");
+        }
+        r += 1;
+      }
+    }
     function draw() {
       while (list.firstChild) {
         list.removeChild(list.firstChild);
@@ -1189,18 +1210,35 @@
           var node = graph.nodes[index];
           var row = document.createElement("div");
           row.className = "mmd-row" + (session.selectedIndex === index ? " is-selected" : "");
-          var inp = document.createElement("input");
-          inp.type = "text";
-          inp.value = node.extra || node.label;
-          inp.addEventListener("input", function () {
-            node.extra = inp.value;
-            node.label = inp.value;
+          var line = document.createElement("div");
+          line.className = "mmd-git-line";
+          line.contentEditable = "true";
+          line.spellcheck = false;
+          line.textContent = node.extra || node.label;
+          line.addEventListener("input", function () {
+            var text = line.textContent || "";
+            node.extra = text;
+            node.label = text;
             persist(session);
           });
-          row.appendChild(inp);
+          line.addEventListener("mousedown", function (event) {
+            event.stopPropagation();
+          });
+          line.addEventListener("keydown", function (event) {
+            event.stopPropagation();
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          });
+          line.addEventListener("focus", function () {
+            session.selectedIndex = index;
+            markSelected();
+          });
+          row.appendChild(line);
           row.addEventListener("click", function () {
             session.selectedIndex = index;
-            draw();
+            markSelected();
+            line.focus();
           });
           list.appendChild(row);
         })(i);

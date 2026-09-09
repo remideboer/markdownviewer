@@ -339,7 +339,11 @@
       if (node.classList.contains("mmd-editing")) {
         return;
       }
-      var src = decodeURIComponent(node.getAttribute("data-mermaid") || "");
+      var encoded = node.getAttribute("data-mermaid") || "";
+      if (node.getAttribute("data-drawn") === encoded && node.querySelector("svg")) {
+        return;
+      }
+      var src = decodeURIComponent(encoded);
       var id = "mmd-" + mermaidSeq;
       mermaidSeq += 1;
       jobs.push(
@@ -347,8 +351,10 @@
           .render(id, src)
           .then(function (result) {
             node.innerHTML = result.svg;
+            node.setAttribute("data-drawn", encoded);
           })
           .catch(function (err) {
+            node.removeAttribute("data-drawn");
             node.innerHTML =
               '<pre class="mermaid-error">' + escapeHtml(err) + "</pre>";
           })

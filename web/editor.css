@@ -276,19 +276,28 @@ body {
   align-items: center;
 }
 
-.mmd-row.is-selected input {
+.mmd-row.is-selected input,
+.mmd-row.is-selected .mmd-git-line {
   border-color: #0b57d0;
 }
 
 .mmd-row input,
 .mmd-list > input,
-.mmd-kanban-col input {
+.mmd-kanban-col input,
+.mmd-git-line {
   font: inherit;
   font-size: 0.9rem;
   padding: 0.25em 0.45em;
   border: 1px solid #cfc6b6;
   border-radius: 4px;
   flex: 1;
+}
+
+.mmd-git-line {
+  min-height: 1.4em;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .mmd-kanban {

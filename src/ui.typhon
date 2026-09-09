@@ -78,18 +78,26 @@ package class MarkdownViewer inherits QMainWindow {
     public refreshTabLabels() {
         int i = 0
         loop (i < len(this.pages)) {
-            this.tabs.setTabText(i, this.pages[i].tabLabel())
+            string label = this.pages[i].tabLabel()
+            if (str(this.tabs.tabText(i)) != label) {
+                this.tabs.setTabText(i, label)
+            }
             i++
         }
     }
 
     public refreshTitle() {
         if (len(this.pages) == 0) {
-            this.setWindowTitle("MarkdownViewer")
+            if (this.windowTitle() != "MarkdownViewer") {
+                this.setWindowTitle("MarkdownViewer")
+            }
             return
         }
         string name = this.currentTab().tabLabel()
-        this.setWindowTitle(name + " — MarkdownViewer")
+        string nextTitle = name + " — MarkdownViewer"
+        if (str(this.windowTitle()) != nextTitle) {
+            this.setWindowTitle(nextTitle)
+        }
     }
 
     public closeEvent(object event) {
