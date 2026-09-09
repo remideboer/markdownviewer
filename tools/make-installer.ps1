@@ -19,4 +19,4 @@ if (-not (Test-Path $exe)) {
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit $LASTEXITCODE"
 }
-Write-Host "Installer: $root\dist\MarkdownViewer-Setup-1.0.2.exe"
+Write-Host "Installer: $root\dist\MarkdownViewer-Setup-1.0.3.exe"
