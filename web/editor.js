@@ -92,6 +92,28 @@
     scheduleNotify();
   }
 
+  function unwrapToParagraph() {
+    var article = document.getElementById("doc");
+    var sel = window.getSelection();
+    var node = sel && sel.anchorNode ? sel.anchorNode : null;
+    var el = node;
+    if (el && el.nodeType === 3) {
+      el = el.parentElement;
+    }
+    while (el && el !== article) {
+      if (el.nodeType === 1 && /^H[1-6]$/i.test(el.tagName)) {
+        var p = document.createElement("p");
+        while (el.firstChild) {
+          p.appendChild(el.firstChild);
+        }
+        el.parentNode.replaceChild(p, el);
+        return;
+      }
+      el = el.parentElement;
+    }
+    document.execCommand("formatBlock", false, "p");
+  }
+
   function slugify(text) {
     return String(text)
       .trim()
@@ -431,7 +453,11 @@
     var article = document.getElementById("doc");
     article.focus();
     if (name === "heading") {
-      document.execCommand("formatBlock", false, arg);
+      if (arg === "p") {
+        unwrapToParagraph();
+      } else {
+        document.execCommand("formatBlock", false, arg);
+      }
     } else if (name === "insertLink") {
       insertLink(arg, arg2 || "");
       return;
