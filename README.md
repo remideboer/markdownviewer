@@ -56,6 +56,14 @@ That transpiles the Typhon sources and runs PyInstaller. The result is an onedir
 
 `dist/MarkdownViewer/MarkdownViewer.exe`
 
+To wrap that folder in a Windows installer (Inno Setup 6):
+
+```powershell
+powershell -File tools/make-installer.ps1
+```
+
+The setup exe is written to `dist/MarkdownViewer-Setup-1.0.0.exe`.
+
 Qt WebEngine needs that folder layout (it ships `QtWebEngineProcess` next to the app). The build is large, on the order of hundreds of megabytes.
 
 ## Tests
