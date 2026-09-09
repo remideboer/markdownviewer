@@ -1,0 +1,75 @@
+# One open document: web view + markdown + QWebChannel bridge.
+
+from paths import assetRoot
+from document import MarkdownDocument
+from bridge import EditorBridge
+from pathlib import Path
+from PyQt6.QtCore import QUrl
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebChannel import QWebChannel
+from PyQt6.QtWebEngineCore import QWebEngineSettings
+import json
+
+package class EditorTab inherits QWidget {
+    public MarkdownDocument doc
+    public EditorBridge editorBridge
+    public QWebEngineView view
+    public QWebChannel channel
+    public bool editorReady
+
+    public constructor() {
+        this.doc = MarkdownDocument()
+        this.editorReady = false
+        this.editorBridge = EditorBridge()
+        this.editorBridge.doc = this.doc
+        this.editorBridge.pendingHref = ""
+        this.view = QWebEngineView()
+        this.channel = QWebChannel()
+        this.channel.registerObject("bridge", this.editorBridge)
+        this.view.page().setWebChannel(this.channel)
+        this.view.settings().setAttribute(
+            QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,
+            true
+        )
+        this.view.loadFinished.connect(this.onEditorLoaded)
+        QVBoxLayout layout = QVBoxLayout(this)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(this.view)
+        Path webDir = assetRoot().joinpath("web")
+        Path htmlFile = webDir.joinpath("editor.html")
+        this.view.load(QUrl.fromLocalFile(str(htmlFile.resolve())))
+    }
+
+    public onEditorLoaded(bool loaded) {
+        if (!loaded) {
+            return
+        }
+        this.editorReady = true
+        this.pushMarkdown()
+    }
+
+    public pushMarkdown() {
+        if (!this.editorReady) {
+            return
+        }
+        string payload = json.dumps(this.doc.getContent())
+        this.view.page().runJavaScript("window.setMarkdown(" + payload + ")")
+    }
+
+    public runCommand(string name, string arg) {
+        if (!this.editorReady) {
+            return
+        }
+        string js = "window.execEditorCommand(" + json.dumps(name) + ", " + json.dumps(arg) + ")"
+        this.view.page().runJavaScript(js)
+    }
+
+    public string tabLabel() {
+        string name = this.doc.displayName()
+        if (this.doc.isDirty()) {
+            return "*" + name
+        }
+        return name
+    }
+}

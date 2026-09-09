@@ -55,11 +55,34 @@ body {
 
 #doc a {
   color: #0b57d0;
+  cursor: pointer;
 }
 
 #doc ul,
 #doc ol {
   padding-left: 1.4em;
+}
+
+#doc ul.task-list {
+  list-style: none;
+  padding-left: 0.15em;
+}
+
+#doc li.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45em;
+}
+
+#doc li.task-item input[type="checkbox"] {
+  margin-top: 0.38em;
+  flex-shrink: 0;
+}
+
+#doc hr {
+  border: none;
+  border-top: 1px solid #e0d9cc;
+  margin: 1.5em 0;
 }
 
 #doc pre {

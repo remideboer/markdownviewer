@@ -1,0 +1,73 @@
+# Resolve clicked hrefs to local markdown files (no Qt).
+
+from urllib.parse import urlparse, unquote
+from pathlib import Path
+
+package function bool isMarkdownPath(string path) {
+    string lower = path.lower()
+    if (lower.endswith(".markdown")) {
+        return true
+    }
+    if (lower.endswith(".md")) {
+        return true
+    }
+    return false
+}
+
+package function string classifyHref(string href) {
+    string h = href.strip()
+    if (h == "") {
+        return "empty"
+    }
+    string lower = h.lower()
+    if (lower.startswith("http://") || lower.startswith("https://") || lower.startswith("mailto:")) {
+        return "external"
+    }
+    if (h.startswith("#")) {
+        return "hash"
+    }
+    return "local"
+}
+
+package function string stripFileUrl(string href) {
+    var parsed = urlparse(href)
+    if (parsed.scheme.lower() != "file") {
+        return href
+    }
+    string path = unquote(parsed.path)
+    if (len(path) >= 3) {
+        if (path.startswith("/") && path[2] == ":") {
+            return path[1:]
+        }
+    }
+    return path
+}
+
+package function string resolveMarkdownLink(string currentFile, string href) {
+    string trimmed = href.strip()
+    if (classifyHref(trimmed) != "local") {
+        return ""
+    }
+    string raw = stripFileUrl(trimmed)
+    if (raw == "") {
+        return ""
+    }
+    Path rawPath = Path(raw)
+    Path target = rawPath
+    if (!rawPath.is_absolute()) {
+        if (currentFile == "") {
+            return ""
+        }
+        Path base = Path(currentFile).resolve().parent
+        target = base.joinpath(raw)
+    }
+    target = target.resolve()
+    if (!target.is_file()) {
+        return ""
+    }
+    string resolved = str(target)
+    if (!isMarkdownPath(resolved)) {
+        return ""
+    }
+    return resolved
+}

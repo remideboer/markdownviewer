@@ -1,0 +1,45 @@
+# Resolve relative markdown links without Qt.
+
+from pathlib import Path
+from links import classifyHref, isMarkdownPath, resolveMarkdownLink
+import tempfile
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== links ===")
+
+assertTrue("http external", classifyHref("https://example.com") == "external")
+assertTrue("mailto external", classifyHref("mailto:a@b.c") == "external")
+assertTrue("hash", classifyHref("#anker") == "hash")
+assertTrue("local", classifyHref("linked.md") == "local")
+assertTrue("md suffix", isMarkdownPath("note.md"))
+assertTrue("markdown suffix", isMarkdownPath("Note.MARKDOWN"))
+assertTrue("txt not md", isMarkdownPath("note.txt") == false)
+
+string folder = tempfile.mkdtemp()
+string here = str(Path(folder).joinpath("demo.md"))
+string other = str(Path(folder).joinpath("linked.md"))
+string txt = str(Path(folder).joinpath("notes.txt"))
+Path(here).write_text("# demo\n", encoding="utf-8")
+Path(other).write_text("# linked\n", encoding="utf-8")
+Path(txt).write_text("plain\n", encoding="utf-8")
+
+string rel = resolveMarkdownLink(here, "linked.md")
+assertTrue("relative md", rel != "")
+assertTrue("relative name", Path(rel).name == "linked.md")
+
+assertTrue("missing empty", resolveMarkdownLink(here, "nope.md") == "")
+assertTrue("txt empty", resolveMarkdownLink(here, "notes.txt") == "")
+assertTrue("relative without base", resolveMarkdownLink("", "linked.md") == "")
+assertTrue("http not local", resolveMarkdownLink(here, "https://example.com/a.md") == "")
+
+string absHit = resolveMarkdownLink(here, other)
+assertTrue("absolute md", absHit != "")
+
+print("=== links done ===")

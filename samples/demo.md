@@ -1,6 +1,8 @@
 # Demo-document
 
-Dit is een **vet** voorbeeld met een [link](https://example.com).
+Dit is een **vet** voorbeeld met een [externe link](https://example.com).
+
+---
 
 ## Lijsten
 
@@ -9,6 +11,13 @@ Dit is een **vet** voorbeeld met een [link](https://example.com).
 
 1. Een
 2. Twee
+
+## Taken
+
+- [ ] Nog doen
+- [x] Afgevinkt
+
+Open het [gekoppelde document](linked.md).
 
 ### Stroomdiagram
 

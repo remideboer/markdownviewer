@@ -1,10 +1,21 @@
 # JS → Python via QWebChannel. No constructor: @pyqtSlot must not follow a constructor
 # (Typhon emit would attach the decorator to __init__).
+# One @pyqtSlot(str) per class: the Python overload rewriter otherwise stacks
+# every `pyqtSlot(str)` onto the first method and strips the rest.
 
 from PyQt6.QtCore import QObject, pyqtSlot
 from document import MarkdownDocument
 
-package class EditorBridge inherits QObject {
+package class LinkHost inherits QObject {
+    public string pendingHref
+
+    @pyqtSlot(str)
+    public followLink(string href) {
+        this.pendingHref = href
+    }
+}
+
+package class EditorBridge inherits LinkHost {
     public MarkdownDocument doc
 
     @pyqtSlot(str)

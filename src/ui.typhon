@@ -1,115 +1,156 @@
-# Main window: menu, toolbar, QWebEngineView host for the WYSIWYG editor.
+# Main window: tabbed WYSIWYG editors, menu, toolbar.
 
 from paths import assetRoot
-import json
+from tab import EditorTab
+from links import classifyHref, resolveMarkdownLink
 from pathlib import Path
-import QApplication, QMainWindow, QToolBar, QFileDialog, QMessageBox, QInputDialog from PyQt6.QtWidgets
-import QAction from PyQt6.QtGui
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QInputDialog, QTabWidget
+from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QUrl, QTimer
-import QWebEngineView from PyQt6.QtWebEngineWidgets
-import QWebChannel from PyQt6.QtWebChannel
-import QWebEngineSettings from PyQt6.QtWebEngineCore
-from document import MarkdownDocument
-from bridge import EditorBridge
 
 string MD_FILTER = "Markdown (*.md *.markdown);;Alle bestanden (*.*)"
 
 package class MarkdownViewer inherits QMainWindow {
-    private MarkdownDocument doc
-    private EditorBridge editorBridge
-    private QWebEngineView view
-    private QWebChannel channel
+    private QTabWidget tabs
+    private list<EditorTab> pages
     private QTimer titleTimer
-    private bool editorReady
 
     public constructor() {
-        this.doc = MarkdownDocument()
-        this.editorReady = false
-        this.editorBridge = EditorBridge()
-        this.editorBridge.doc = this.doc
+        this.pages = []
         this.setWindowTitle("MarkdownViewer")
         this.resize(960, 720)
         this.buildMenus()
         this.buildToolbar()
-        this.view = QWebEngineView()
-        this.setCentralWidget(this.view)
-        this.channel = QWebChannel()
-        this.channel.registerObject("bridge", this.editorBridge)
-        this.view.page().setWebChannel(this.channel)
-        this.view.settings().setAttribute(
-            QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,
-            true
-        )
-        this.view.loadFinished.connect(this.onEditorLoaded)
-        Path webDir = assetRoot().joinpath("web")
-        Path htmlFile = webDir.joinpath("editor.html")
-        this.view.load(QUrl.fromLocalFile(str(htmlFile.resolve())))
+        this.tabs = QTabWidget()
+        this.tabs.setTabsClosable(true)
+        this.tabs.tabCloseRequested.connect(this.onTabClose)
+        this.tabs.currentChanged.connect(this.refreshTitle)
+        this.setCentralWidget(this.tabs)
+        this.addEditorTab()
         this.titleTimer = QTimer(this)
-        this.titleTimer.timeout.connect(this.refreshTitle)
+        this.titleTimer.timeout.connect(this.onTick)
         this.titleTimer.start(300)
         this.refreshTitle()
     }
 
-    public refreshTitle() {
-        string name = this.doc.displayName()
-        if (this.doc.isDirty()) {
-            name = "*" + name
+    public EditorTab currentTab() {
+        int index = this.tabs.currentIndex()
+        if (index < 0) {
+            return this.pages[0]
         }
+        return this.pages[index]
+    }
+
+    public EditorTab addEditorTab() {
+        EditorTab tab = EditorTab()
+        this.pages.append(tab)
+        this.tabs.addTab(tab, tab.tabLabel())
+        this.tabs.setCurrentWidget(tab)
+        return tab
+    }
+
+    public int indexOfPath(string path) {
+        string key = str(Path(path).resolve())
+        int i = 0
+        loop (i < len(this.pages)) {
+            nullable<string> p = this.pages[i].doc.getFilePath()
+            if (p != null) {
+                if (str(Path(p).resolve()) == key) {
+                    return i
+                }
+            }
+            i++
+        }
+        return -1
+    }
+
+    public onTick() {
+        this.refreshTabLabels()
+        this.refreshTitle()
+        EditorTab tab = this.currentTab()
+        string href = tab.editorBridge.pendingHref
+        if (href != "") {
+            tab.editorBridge.pendingHref = ""
+            this.openFollowedLink(href)
+        }
+    }
+
+    public refreshTabLabels() {
+        int i = 0
+        loop (i < len(this.pages)) {
+            this.tabs.setTabText(i, this.pages[i].tabLabel())
+            i++
+        }
+    }
+
+    public refreshTitle() {
+        if (len(this.pages) == 0) {
+            this.setWindowTitle("MarkdownViewer")
+            return
+        }
+        string name = this.currentTab().tabLabel()
         this.setWindowTitle(name + " — MarkdownViewer")
     }
 
-    public onEditorLoaded(bool loaded) {
-        if (!loaded) {
-            QMessageBox.warning(
-                this,
-                "Editor",
-                "De editorpagina kon niet worden geladen. Ontbreekt web/editor.html?"
-            )
-            return
-        }
-        this.editorReady = true
-        this.pushMarkdown()
-    }
-
-    public pushMarkdown() {
-        if (!this.editorReady) {
-            return
-        }
-        string payload = json.dumps(this.doc.getContent())
-        this.view.page().runJavaScript("window.setMarkdown(" + payload + ")")
-    }
-
     public closeEvent(object event) {
-        if (!this.confirmDiscard()) {
-            event.ignore()
-            return
+        int i = 0
+        loop (i < len(this.pages)) {
+            if (!this.confirmDiscardTab(this.pages[i])) {
+                event.ignore()
+                return
+            }
+            i++
         }
         event.accept()
     }
 
-    public bool confirmDiscard() {
-        if (!this.doc.isDirty()) {
+    public bool confirmDiscardTab(EditorTab tab) {
+        if (!tab.doc.isDirty()) {
             return true
         }
+        this.tabs.setCurrentWidget(tab)
         int answer = QMessageBox.question(
             this,
             "Niet-opgeslagen wijzigingen",
-            "Er zijn niet-opgeslagen wijzigingen. Toch doorgaan?"
+            "Er zijn niet-opgeslagen wijzigingen in " + tab.doc.displayName() + ". Toch doorgaan?"
         )
         return answer == QMessageBox.StandardButton.Yes
     }
 
-    public onNew() {
-        if (!this.confirmDiscard()) {
+    public onTabClose(int index) {
+        if (index < 0) {
             return
         }
-        this.doc.clear()
-        this.pushMarkdown()
+        if (index >= len(this.pages)) {
+            return
+        }
+        EditorTab tab = this.pages[index]
+        if (len(this.pages) <= 1) {
+            if (!this.confirmDiscardTab(tab)) {
+                return
+            }
+            tab.doc.clear()
+            tab.pushMarkdown()
+            this.refreshTabLabels()
+            this.refreshTitle()
+            return
+        }
+        if (!this.confirmDiscardTab(tab)) {
+            return
+        }
+        this.pages.pop(index)
+        this.tabs.removeTab(index)
+        this.refreshTitle()
+    }
+
+    public onNew() {
+        this.addEditorTab()
         this.refreshTitle()
     }
 
     public onOpen() {
-        if (!this.confirmDiscard()) {
+        EditorTab tab = this.currentTab()
+        if (!this.confirmDiscardTab(tab)) {
             return
         }
         string startDir = this.startDir()
@@ -118,44 +159,49 @@ package class MarkdownViewer inherits QMainWindow {
         if (path == "") {
             return
         }
-        if (!this.doc.loadFrom(path)) {
+        if (!tab.doc.loadFrom(path)) {
             QMessageBox.warning(this, "Openen", "Kon het bestand niet lezen.")
             return
         }
-        this.pushMarkdown()
+        tab.pushMarkdown()
+        this.refreshTabLabels()
         this.refreshTitle()
     }
 
     public onSave() {
-        if (this.doc.getFilePath() == null) {
+        EditorTab tab = this.currentTab()
+        if (tab.doc.getFilePath() == null) {
             this.onSaveAs()
             return
         }
-        if (!this.doc.save()) {
+        if (!tab.doc.save()) {
             QMessageBox.warning(this, "Opslaan", "Kon het bestand niet schrijven.")
             return
         }
+        this.refreshTabLabels()
         this.refreshTitle()
     }
 
     public onSaveAs() {
+        EditorTab tab = this.currentTab()
         string startDir = this.startDir()
         var picked = QFileDialog.getSaveFileName(this, "Opslaan als", startDir, MD_FILTER)
         string path = str(picked[0])
         if (path == "") {
             return
         }
-        if (!this.doc.saveTo(path)) {
+        if (!tab.doc.saveTo(path)) {
             QMessageBox.warning(this, "Opslaan", "Kon het bestand niet schrijven.")
             return
         }
+        this.refreshTabLabels()
         this.refreshTitle()
     }
 
     public string startDir() {
-        nullable<string> current = this.doc.getFilePath()
+        nullable<string> current = this.currentTab().doc.getFilePath()
         if (current == null) {
-            Path samples = assetRoot() / "samples"
+            Path samples = assetRoot().joinpath("samples")
             if (samples.is_dir()) {
                 return str(samples)
             }
@@ -164,20 +210,58 @@ package class MarkdownViewer inherits QMainWindow {
         return str(Path(current).parent)
     }
 
+    public openFollowedLink(string href) {
+        string kind = classifyHref(href)
+        if (kind == "external") {
+            QDesktopServices.openUrl(QUrl(href))
+            return
+        }
+        if (kind == "hash") {
+            return
+        }
+        string base = ""
+        nullable<string> current = this.currentTab().doc.getFilePath()
+        if (current != null) {
+            base = current
+        }
+        string resolved = resolveMarkdownLink(base, href)
+        if (resolved == "") {
+            QMessageBox.warning(this, "Link", "Kan deze link niet als markdown-bestand openen.")
+            return
+        }
+        int existing = this.indexOfPath(resolved)
+        if (existing >= 0) {
+            this.tabs.setCurrentIndex(existing)
+            this.refreshTitle()
+            return
+        }
+        EditorTab tab = this.addEditorTab()
+        if (!tab.doc.loadFrom(resolved)) {
+            QMessageBox.warning(this, "Link", "Kon het bestand niet lezen.")
+            int added = this.tabs.currentIndex()
+            this.pages.pop(added)
+            this.tabs.removeTab(added)
+            return
+        }
+        tab.pushMarkdown()
+        this.refreshTabLabels()
+        this.refreshTitle()
+    }
+
     public onBold() {
-        this.runCommand("bold", "")
+        this.currentTab().runCommand("bold", "")
     }
 
     public onH1() {
-        this.runCommand("heading", "h1")
+        this.currentTab().runCommand("heading", "h1")
     }
 
     public onH2() {
-        this.runCommand("heading", "h2")
+        this.currentTab().runCommand("heading", "h2")
     }
 
     public onH3() {
-        this.runCommand("heading", "h3")
+        this.currentTab().runCommand("heading", "h3")
     }
 
     public onLink() {
@@ -189,23 +273,23 @@ package class MarkdownViewer inherits QMainWindow {
         if (url == "") {
             return
         }
-        this.runCommand("createLink", url)
+        this.currentTab().runCommand("createLink", url)
     }
 
     public onBulletList() {
-        this.runCommand("insertUnorderedList", "")
+        this.currentTab().runCommand("insertUnorderedList", "")
     }
 
     public onNumberList() {
-        this.runCommand("insertOrderedList", "")
+        this.currentTab().runCommand("insertOrderedList", "")
     }
 
-    public runCommand(string name, string arg) {
-        if (!this.editorReady) {
-            return
-        }
-        string js = "window.execEditorCommand(" + json.dumps(name) + ", " + json.dumps(arg) + ")"
-        this.view.page().runJavaScript(js)
+    public onHr() {
+        this.currentTab().runCommand("insertHorizontalRule", "")
+    }
+
+    public onTaskList() {
+        this.currentTab().runCommand("insertTaskList", "")
     }
 
     public buildMenus() {
@@ -266,5 +350,13 @@ package class MarkdownViewer inherits QMainWindow {
         olAct.setToolTip("Genummerde lijst")
         olAct.triggered.connect(this.onNumberList)
         bar.addAction(olAct)
+        QAction hrAct = QAction("Streep", this)
+        hrAct.setToolTip("Horizontale lijn")
+        hrAct.triggered.connect(this.onHr)
+        bar.addAction(hrAct)
+        QAction taskAct = QAction("Taken", this)
+        taskAct.setToolTip("Takenlijst")
+        taskAct.triggered.connect(this.onTaskList)
+        bar.addAction(taskAct)
     }
 }
