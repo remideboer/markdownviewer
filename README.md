@@ -62,7 +62,7 @@ To wrap that folder in a Windows installer (Inno Setup 6):
 powershell -File tools/make-installer.ps1
 ```
 
-The setup exe is written to `dist/MarkdownViewer-Setup-1.0.1.exe`. The wizard asks whether to open `.md` files with MarkdownViewer.
+The setup exe is written to `dist/MarkdownViewer-Setup-1.0.2.exe`. The wizard asks whether to open `.md` files with MarkdownViewer.
 
 Qt WebEngine needs that folder layout (it ships `QtWebEngineProcess` next to the app). The packed build is large because it includes Chromium.
 

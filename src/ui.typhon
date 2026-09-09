@@ -6,7 +6,7 @@ from links import classifyHref, resolveMarkdownLink
 from i18n import t
 from icons import toolbarIcon
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget, QToolButton
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QTabBar, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget
 from PyQt6.QtGui import QAction, QDesktopServices, QPageLayout, QPageSize
 from PyQt6.QtCore import QUrl, QTimer, QMarginsF, Qt
 import json
@@ -15,6 +15,7 @@ import shutil
 
 package class MarkdownViewer inherits QMainWindow {
     private QTabWidget tabs
+    private QWidget plusPage
     private list<EditorTab> pages
     private QTimer titleTimer
     private string pendingPdf
@@ -28,18 +29,15 @@ package class MarkdownViewer inherits QMainWindow {
         this.resize(960, 720)
         this.buildMenus()
         this.buildToolbar()
+        this.plusPage = QWidget()
         this.tabs = QTabWidget()
         this.tabs.setTabsClosable(true)
         this.tabs.tabCloseRequested.connect(this.onTabClose)
-        this.tabs.currentChanged.connect(this.refreshTitle)
-        QToolButton plusBtn = QToolButton()
-        plusBtn.setText("+")
-        plusBtn.setAutoRaise(true)
-        plusBtn.setToolTip(t("action_new"))
-        plusBtn.clicked.connect(this.onNew)
-        this.tabs.setCornerWidget(plusBtn, Qt.Corner.TopRightCorner)
         this.setCentralWidget(this.tabs)
+        this.tabs.addTab(this.plusPage, "+")
+        this.stylePlusTab()
         this.addEditorTab()
+        this.tabs.currentChanged.connect(this.onTabChanged)
         this.titleTimer = QTimer(this)
         this.titleTimer.timeout.connect(this.onTick)
         this.titleTimer.start(300)
@@ -51,7 +49,28 @@ package class MarkdownViewer inherits QMainWindow {
         if (index < 0) {
             return this.pages[0]
         }
+        if (index >= len(this.pages)) {
+            return this.pages[len(this.pages) - 1]
+        }
         return this.pages[index]
+    }
+
+    public stylePlusTab() {
+        int idx = this.tabs.indexOf(this.plusPage)
+        if (idx < 0) {
+            return
+        }
+        this.tabs.setTabToolTip(idx, t("action_new"))
+        this.tabs.tabBar().setTabButton(idx, QTabBar.ButtonPosition.RightSide, null)
+        this.tabs.tabBar().setTabButton(idx, QTabBar.ButtonPosition.LeftSide, null)
+    }
+
+    public onTabChanged(int index) {
+        if (index == this.tabs.indexOf(this.plusPage)) {
+            this.onNew()
+            return
+        }
+        this.refreshTitle()
     }
 
     public EditorTab addEditorTab() {
@@ -59,8 +78,14 @@ package class MarkdownViewer inherits QMainWindow {
         tab.view.customContextMenuRequested.connect(this.onEditorContextMenu)
         tab.view.page().pdfPrintingFinished.connect(this.onPdfFinished)
         this.pages.append(tab)
-        this.tabs.addTab(tab, tab.tabLabel())
+        int plusAt = this.tabs.indexOf(this.plusPage)
+        if (plusAt >= 0) {
+            this.tabs.insertTab(plusAt, tab, tab.tabLabel())
+        } else {
+            this.tabs.addTab(tab, tab.tabLabel())
+        }
         this.tabs.setCurrentWidget(tab)
+        this.stylePlusTab()
         return tab
     }
 
@@ -163,6 +188,7 @@ package class MarkdownViewer inherits QMainWindow {
         }
         this.pages.pop(index)
         this.tabs.removeTab(index)
+        this.stylePlusTab()
         this.refreshTitle()
     }
 
@@ -333,6 +359,7 @@ package class MarkdownViewer inherits QMainWindow {
             int added = this.tabs.currentIndex()
             this.pages.pop(added)
             this.tabs.removeTab(added)
+            this.stylePlusTab()
             return
         }
         tab.pushMarkdown()
