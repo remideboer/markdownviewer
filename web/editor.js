@@ -184,6 +184,143 @@
     debounceTimer = setTimeout(notifyChange, 250);
   }
 
+  function isEmptyListItem(li) {
+    var clone = li.cloneNode(true);
+    var boxes = clone.querySelectorAll('input[type="checkbox"]');
+    boxes.forEach(function (box) {
+      box.remove();
+    });
+    var text = (clone.textContent || "").replace(/\u00a0/g, " ").trim();
+    return text === "";
+  }
+
+  function closestLi(node) {
+    var el = node && node.nodeType === 1 ? node : node.parentElement;
+    return el ? el.closest("li") : null;
+  }
+
+  function placeCaretIn(el, afterCheckbox) {
+    var sel = window.getSelection();
+    var range = document.createRange();
+    if (afterCheckbox && el.firstChild && el.firstChild.nodeName === "INPUT") {
+      if (el.childNodes.length > 1) {
+        range.setStart(el, 1);
+      } else {
+        el.appendChild(document.createTextNode("\u00a0"));
+        range.setStart(el, 1);
+      }
+    } else {
+      range.setStart(el, 0);
+    }
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function continueTaskItem(li, sel) {
+    var range = sel.getRangeAt(0);
+    if (!range.collapsed) {
+      range.deleteContents();
+      range = sel.getRangeAt(0);
+    }
+    var next = document.createElement("li");
+    next.className = "task-item";
+    var box = document.createElement("input");
+    box.type = "checkbox";
+    box.contentEditable = "false";
+    next.appendChild(box);
+    try {
+      var rest = document.createRange();
+      rest.selectNodeContents(li);
+      rest.setStart(range.endContainer, range.endOffset);
+      var frag = rest.extractContents();
+      if (frag.querySelectorAll) {
+        var leftover = frag.querySelectorAll('input[type="checkbox"]');
+        leftover.forEach(function (extra) {
+          extra.remove();
+        });
+      }
+      next.appendChild(frag);
+    } catch (err) {
+      next.appendChild(document.createTextNode("\u00a0"));
+    }
+    if (isEmptyListItem(next)) {
+      next.appendChild(document.createTextNode("\u00a0"));
+    }
+    li.parentNode.insertBefore(next, li.nextSibling);
+    placeCaretIn(next, true);
+  }
+
+  function exitList(li) {
+    var list = li.parentElement;
+    if (!list) {
+      return;
+    }
+    var following = [];
+    var sib = li.nextElementSibling;
+    while (sib) {
+      following.push(sib);
+      sib = sib.nextElementSibling;
+    }
+    list.removeChild(li);
+    var p = document.createElement("p");
+    p.appendChild(document.createElement("br"));
+    if (following.length === 0) {
+      while (list.lastElementChild && isEmptyListItem(list.lastElementChild)) {
+        list.removeChild(list.lastElementChild);
+      }
+      if (!list.firstElementChild) {
+        list.parentNode.replaceChild(p, list);
+      } else {
+        list.parentNode.insertBefore(p, list.nextSibling);
+      }
+    } else {
+      var rest = document.createElement(list.tagName.toLowerCase());
+      rest.className = list.className;
+      following.forEach(function (item) {
+        rest.appendChild(item);
+      });
+      if (!list.firstElementChild) {
+        list.parentNode.replaceChild(p, list);
+      } else {
+        list.parentNode.insertBefore(p, list.nextSibling);
+      }
+      p.parentNode.insertBefore(rest, p.nextSibling);
+    }
+    placeCaretIn(p, false);
+  }
+
+  function onListEnter(event) {
+    if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) {
+      return;
+    }
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      return;
+    }
+    var li = closestLi(sel.anchorNode);
+    var article = document.getElementById("doc");
+    if (!li || !article.contains(li)) {
+      return;
+    }
+    var anchor = sel.anchorNode;
+    var widgetHost = anchor.nodeType === 1 ? anchor : anchor.parentElement;
+    if (widgetHost && widgetHost.closest(".mermaid-widget")) {
+      return;
+    }
+    if (isEmptyListItem(li)) {
+      event.preventDefault();
+      exitList(li);
+      scheduleNotify();
+      return;
+    }
+    if (li.classList.contains("task-item")) {
+      event.preventDefault();
+      continueTaskItem(li, sel);
+      scheduleNotify();
+    }
+  }
+
   function insertTaskList() {
     var article = document.getElementById("doc");
     article.focus();
@@ -254,6 +391,7 @@
     });
     var article = document.getElementById("doc");
     article.addEventListener("input", scheduleNotify);
+    article.addEventListener("keydown", onListEnter);
     article.addEventListener("change", function (event) {
       if (event.target && event.target.matches('input[type="checkbox"]')) {
         scheduleNotify();
