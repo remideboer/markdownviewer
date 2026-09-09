@@ -54,6 +54,14 @@
       connect: nl ? "Klik de bron, daarna het doel." : "Click the source, then the target.",
       editTitle: nl ? "Dubbelklik om te bewerken" : "Double-click to edit",
       newLabel: "Node",
+      dirLR: nl ? "Links-rechts" : "Left to right",
+      dirRL: nl ? "Rechts-links" : "Right to left",
+      dirTD: nl ? "Boven-onder" : "Top to bottom",
+      dirBT: nl ? "Onder-boven" : "Bottom to top",
+      inherit: nl ? "Overerving" : "Inheritance",
+      implements: nl ? "Implementeert" : "Implements",
+      assoc: nl ? "Associatie" : "Association",
+      uses: nl ? "Gebruikt" : "Uses",
     };
   }
 
@@ -161,7 +169,7 @@
       buckets[ly].push(node);
       i += 1;
     }
-    var vertical = graph.dir === "TD" || graph.dir === "BT" || graph.kind === "class" || graph.kind === "state";
+    var vertical = graph.dir === "TD" || graph.dir === "BT";
     Object.keys(buckets).forEach(function (key) {
       var list = buckets[key];
       var idx = 0;
@@ -231,6 +239,75 @@
     return "";
   }
 
+  function edgeCaption(kind, edge) {
+    var strings = tr();
+    var name = "";
+    if (kind === "class") {
+      if (edge.arrow === "<|--") {
+        name = strings.inherit;
+      } else if (edge.arrow === "<|..") {
+        name = strings.implements;
+      } else if (edge.arrow === "-->") {
+        name = strings.assoc;
+      } else if (edge.arrow === "..>") {
+        name = strings.uses;
+      } else {
+        name = edge.arrow || "";
+      }
+    }
+    if (edge.label) {
+      return name ? name + ": " + edge.label : edge.label;
+    }
+    return name || edge.arrow || "";
+  }
+
+  function addSelect(bar) {
+    var sel = document.createElement("select");
+    sel.className = "mmd-select";
+    bar.appendChild(sel);
+    return sel;
+  }
+
+  function fillDirSelect(sel, graph) {
+    var strings = tr();
+    var opts = [
+      ["LR", strings.dirLR],
+      ["RL", strings.dirRL],
+      ["TD", strings.dirTD],
+      ["BT", strings.dirBT],
+    ];
+    var i = 0;
+    while (i < opts.length) {
+      var opt = document.createElement("option");
+      opt.value = opts[i][0];
+      opt.textContent = opts[i][1];
+      sel.appendChild(opt);
+      i += 1;
+    }
+    var dir = Kinds.normalizeDir(graph.dir) || (graph.kind === "class" || graph.kind === "state" ? "TD" : "LR");
+    sel.value = dir;
+  }
+
+  function fillRelSelect(sel) {
+    var strings = tr();
+    var rels = Kinds.CLASS_RELS || [];
+    var labels = {
+      "<|--": strings.inherit,
+      "<|..": strings.implements,
+      "-->": strings.assoc,
+      "..>": strings.uses,
+    };
+    var i = 0;
+    while (i < rels.length) {
+      var opt = document.createElement("option");
+      opt.value = rels[i].arrow;
+      opt.textContent = labels[rels[i].arrow] || rels[i].en;
+      sel.appendChild(opt);
+      i += 1;
+    }
+    sel.value = "<|--";
+  }
+
   function drawEdges(session) {
     var svg = session.svg;
     while (svg.firstChild) {
@@ -278,13 +355,16 @@
               event.stopPropagation();
               session.selectedEdge = index;
               session.selectedId = null;
+              if (session.relSelect && session.graph.edges[index]) {
+                session.relSelect.value = session.graph.edges[index].arrow || "<|--";
+              }
               drawEdges(session);
               syncSelection(session);
             };
           })(i)
         );
         svg.appendChild(line);
-        var caption = edge.label || edge.arrow || "";
+        var caption = edgeCaption(session.graph.kind, edge);
         if (caption) {
           var tx = document.createElementNS("http://www.w3.org/2000/svg", "text");
           tx.setAttribute("x", String((x1 + x2) / 2));
@@ -392,7 +472,7 @@
             arrow = "||--o{";
           }
           if (kind === "class") {
-            arrow = "<|--";
+            arrow = session.relType || "<|--";
           }
           if (String(kind).indexOf("c4") === 0) {
             arrow = "Rel";
@@ -649,6 +729,8 @@
       connectFrom: null,
       drag: null,
       dirty: false,
+      relType: "<|--",
+      relSelect: null,
       redraw: function () {
         renderNodes(session);
       },
@@ -656,6 +738,34 @@
     active = session;
     var nodeBtn = addBtn(ui.bar, "node", nodeButtonLabel(graph.kind, strings));
     var edgeBtn = addBtn(ui.bar, "edge", strings.edge);
+    if (graph.kind === "class") {
+      session.relSelect = addSelect(ui.bar);
+      fillRelSelect(session.relSelect);
+      session.relSelect.addEventListener("change", function () {
+        session.relType = session.relSelect.value;
+        if (session.selectedEdge >= 0 && session.graph.edges[session.selectedEdge]) {
+          session.graph.edges[session.selectedEdge].arrow = session.relType;
+          persist(session);
+          drawEdges(session);
+        }
+      });
+      session.relSelect.addEventListener("mousedown", function (event) {
+        event.stopPropagation();
+      });
+    }
+    if (Kinds.supportsDirection(graph.kind)) {
+      var dirSel = addSelect(ui.bar);
+      fillDirSelect(dirSel, graph);
+      dirSel.addEventListener("change", function () {
+        session.graph.dir = dirSel.value;
+        persist(session);
+        layoutGraph(session.graph);
+        renderNodes(session);
+      });
+      dirSel.addEventListener("mousedown", function (event) {
+        event.stopPropagation();
+      });
+    }
     var delBtn = addBtn(ui.bar, "del", strings.del);
     var doneBtn = addBtn(ui.bar, "done", strings.done);
     nodeBtn.addEventListener("click", function (event) {

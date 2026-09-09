@@ -145,6 +145,15 @@ body {
   background: #f3efe6;
 }
 
+.mmd-select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25em 0.4em;
+  border: 1px solid #cfc6b6;
+  border-radius: 4px;
+  background: #fff;
+}
+
 .mmd-edit-hint {
   font-size: 0.82rem;
   color: #6b6458;

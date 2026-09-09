@@ -31,14 +31,50 @@
   }
 
   function emptyGraph(kind) {
+    var dir = "LR";
+    if (kind === "class" || kind === "state") {
+      dir = "TD";
+    }
     return {
       kind: kind,
-      dir: "LR",
+      dir: dir,
       title: "",
       nodes: [],
       edges: [],
       extras: {},
     };
+  }
+
+  function normalizeDir(d) {
+    var x = String(d || "").toUpperCase();
+    if (x === "TB") {
+      return "TD";
+    }
+    if (x === "LR" || x === "RL" || x === "TD" || x === "BT") {
+      return x;
+    }
+    return "";
+  }
+
+  function parseDirectionLine(line) {
+    var m = String(line || "")
+      .trim()
+      .match(/^direction\s+(LR|RL|TD|BT|TB)\s*$/i);
+    if (!m) {
+      return null;
+    }
+    return normalizeDir(m[1]);
+  }
+
+  var CLASS_RELS = [
+    { arrow: "<|--", en: "Inheritance", nl: "Overerving" },
+    { arrow: "<|..", en: "Implements", nl: "Implementeert" },
+    { arrow: "-->", en: "Association", nl: "Associatie" },
+    { arrow: "..>", en: "Uses", nl: "Gebruikt" },
+  ];
+
+  function supportsDirection(kind) {
+    return kind === "flowchart" || kind === "class" || kind === "state" || kind === "er";
   }
 
   function firstCodeLine(src) {
@@ -375,7 +411,12 @@
         seenHeader = true;
         continue;
       }
-      if (/^(subgraph\b|classDef\b|class\s|click\s|style\s|linkStyle\b|direction\s)/i.test(line)) {
+      var flowDir = parseDirectionLine(line);
+      if (flowDir) {
+        graph.dir = flowDir;
+        continue;
+      }
+      if (/^(subgraph\b|classDef\b|class\s|click\s|style\s|linkStyle\b)/i.test(line)) {
         continue;
       }
       if (/^end$/i.test(line)) {
@@ -548,6 +589,11 @@
         seen = true;
         continue;
       }
+      var classDir = parseDirectionLine(line);
+      if (classDir) {
+        graph.dir = classDir;
+        continue;
+      }
       if (current) {
         if (line === "}") {
           current = null;
@@ -566,7 +612,7 @@
         continue;
       }
       var rel = line.match(
-        /^([A-Za-z][\w-]*)\s+(<\|--|\|--|>\|--|\*--|o--|-->|<--|\.\.>|\.\.--|--)\s+([A-Za-z][\w-]*)(?:\s*:\s*(.*))?$/
+        /^([A-Za-z][\w-]*)\s+(<\|\.\.|<\|--|--\|>|\|--|>\|--|\*--|o--|-->|<--|<\.\.|\.\.>|\.\.--|--)\s+([A-Za-z][\w-]*)(?:\s*:\s*(.*))?$/
       );
       if (rel) {
         ensureNode(graph, rel[1], rel[1]);
@@ -584,6 +630,8 @@
 
   function serializeClass(graph) {
     var lines = ["classDiagram"];
+    var dir = normalizeDir(graph.dir) || "TD";
+    lines.push("  direction " + dir);
     var nodes = graph.nodes || [];
     var n = 0;
     while (n < nodes.length) {
@@ -634,6 +682,11 @@
         seen = true;
         continue;
       }
+      var stateDir = parseDirectionLine(line);
+      if (stateDir) {
+        graph.dir = stateDir;
+        continue;
+      }
       if (/^state\s+/.test(line) && line.indexOf("{") >= 0) {
         continue;
       }
@@ -670,6 +723,8 @@
 
   function serializeState(graph) {
     var lines = ["stateDiagram-v2"];
+    var stateDir = normalizeDir(graph.dir) || "TD";
+    lines.push("  direction " + stateDir);
     function emitId(id, node) {
       if (id === "__start__" || id === "__end__" || (node && node.label === "[*]")) {
         return "[*]";
@@ -727,6 +782,11 @@
         seen = true;
         continue;
       }
+      var erDir = parseDirectionLine(line);
+      if (erDir) {
+        graph.dir = erDir;
+        continue;
+      }
       if (current) {
         if (line === "}") {
           current = null;
@@ -766,6 +826,8 @@
 
   function serializeEr(graph) {
     var lines = ["erDiagram"];
+    var erDir = normalizeDir(graph.dir) || "LR";
+    lines.push("  direction " + erDir);
     var nodes = graph.nodes || [];
     var n = 0;
     while (n < nodes.length) {
@@ -1535,8 +1597,11 @@
 
   var api = {
     KIND_IDS: KIND_IDS,
+    CLASS_RELS: CLASS_RELS,
     detectKind: detectKind,
     isGraphKind: isGraphKind,
+    supportsDirection: supportsDirection,
+    normalizeDir: normalizeDir,
     template: template,
     parseDocument: parseDocument,
     parseKind: parseKind,

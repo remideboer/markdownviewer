@@ -86,6 +86,32 @@ assertTrue("class template", cls && cls.kind === "class" && cls.nodes.length >= 
 assertTrue("class members", (cls.nodes[0].members || "").indexOf("name") >= 0);
 assertTrue("class roundtrip", roundtrip("class", kinds.template("class")));
 
+var classRels = kinds.parseDocument(
+  [
+    "classDiagram",
+    "  direction LR",
+    "  class A",
+    "  class B",
+    "  class C",
+    "  class D",
+    "  A <|-- B",
+    "  A <|.. C",
+    "  A --> D",
+    "  A ..> D : uses",
+  ].join("\n")
+);
+assertTrue("class dir LR", classRels && classRels.dir === "LR");
+assertTrue("class inherit", classRels.edges[0].arrow === "<|--");
+assertTrue("class implements", classRels.edges[1].arrow === "<|..");
+assertTrue("class assoc", classRels.edges[2].arrow === "-->");
+assertTrue("class uses", classRels.edges[3].arrow === "..>" && classRels.edges[3].label === "uses");
+assertTrue("class rels roundtrip", roundtrip("class", kinds.serialize(classRels)));
+assertTrue("supports class dir", kinds.supportsDirection("class"));
+assertTrue("no dir pie", !kinds.supportsDirection("pie"));
+
+var flowDir = kinds.parseFlowchart("flowchart LR\n  direction TD\n  a --> b");
+assertTrue("flowchart direction line", flowDir && flowDir.dir === "TD");
+
 var st = kinds.parseDocument(kinds.template("state"));
 assertTrue("state template", st && st.kind === "state" && st.edges.length >= 2);
 assertTrue("state roundtrip", roundtrip("state", kinds.template("state")));

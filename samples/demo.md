@@ -44,12 +44,17 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
+  direction TB
   class Animal {
     +String name
     +eat()
   }
   class Duck
+  class Flyer
+  class Food
   Animal <|-- Duck
+  Flyer <|.. Duck
+  Duck ..> Food : eats
 ```
 
 ### C4 Context
