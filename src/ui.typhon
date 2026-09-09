@@ -6,7 +6,7 @@ from links import classifyHref, resolveMarkdownLink
 from i18n import t
 from icons import toolbarIcon
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget, QToolButton
 from PyQt6.QtGui import QAction, QDesktopServices, QPageLayout, QPageSize
 from PyQt6.QtCore import QUrl, QTimer, QMarginsF, Qt
 import json
@@ -32,6 +32,12 @@ package class MarkdownViewer inherits QMainWindow {
         this.tabs.setTabsClosable(true)
         this.tabs.tabCloseRequested.connect(this.onTabClose)
         this.tabs.currentChanged.connect(this.refreshTitle)
+        QToolButton plusBtn = QToolButton()
+        plusBtn.setText("+")
+        plusBtn.setAutoRaise(true)
+        plusBtn.setToolTip(t("action_new"))
+        plusBtn.clicked.connect(this.onNew)
+        this.tabs.setCornerWidget(plusBtn, Qt.Corner.TopRightCorner)
         this.setCentralWidget(this.tabs)
         this.addEditorTab()
         this.titleTimer = QTimer(this)
@@ -160,9 +166,49 @@ package class MarkdownViewer inherits QMainWindow {
         this.refreshTitle()
     }
 
+    public bringToFront() {
+        this.show()
+        this.showNormal()
+        this.activateWindow()
+        this.raise_()
+    }
+
     public onNew() {
         this.addEditorTab()
         this.refreshTitle()
+    }
+
+    public openFromArg(string path) {
+        Path p = Path(path)
+        if (!p.is_file()) {
+            return
+        }
+        string resolved = str(p.resolve())
+        int existing = this.indexOfPath(resolved)
+        if (existing >= 0) {
+            this.tabs.setCurrentIndex(existing)
+            this.refreshTitle()
+            this.bringToFront()
+            return
+        }
+        EditorTab tab = this.currentTab()
+        bool reuse = false
+        if (tab.doc.getFilePath() == null) {
+            if (!tab.doc.isDirty()) {
+                reuse = true
+            }
+        }
+        if (!reuse) {
+            tab = this.addEditorTab()
+        }
+        if (!tab.doc.loadFrom(resolved)) {
+            QMessageBox.warning(this, t("dialog_open"), t("error_read"))
+            return
+        }
+        tab.pushMarkdown()
+        this.refreshTabLabels()
+        this.refreshTitle()
+        this.bringToFront()
     }
 
     public onOpen() {
@@ -177,6 +223,35 @@ package class MarkdownViewer inherits QMainWindow {
             return
         }
         if (!tab.doc.loadFrom(path)) {
+            QMessageBox.warning(this, t("dialog_open"), t("error_read"))
+            return
+        }
+        tab.pushMarkdown()
+        this.refreshTabLabels()
+        this.refreshTitle()
+    }
+
+    public onOpenInTab() {
+        string startDir = this.startDir()
+        var picked = QFileDialog.getOpenFileName(this, t("dialog_open"), startDir, this.mdFilter(), "", QFileDialog.Option.DontUseNativeDialog)
+        string path = str(picked[0])
+        if (path == "") {
+            return
+        }
+        Path p = Path(path)
+        if (!p.is_file()) {
+            QMessageBox.warning(this, t("dialog_open"), t("error_read"))
+            return
+        }
+        string resolved = str(p.resolve())
+        int existing = this.indexOfPath(resolved)
+        if (existing >= 0) {
+            this.tabs.setCurrentIndex(existing)
+            this.refreshTitle()
+            return
+        }
+        EditorTab tab = this.addEditorTab()
+        if (!tab.doc.loadFrom(resolved)) {
             QMessageBox.warning(this, t("dialog_open"), t("error_read"))
             return
         }
@@ -695,6 +770,10 @@ package class MarkdownViewer inherits QMainWindow {
         openAct.setShortcut("Ctrl+O")
         openAct.triggered.connect(this.onOpen)
         fileMenu.addAction(openAct)
+        QAction openTabAct = QAction(t("action_open_tab"), this)
+        openTabAct.setShortcut("Ctrl+Shift+O")
+        openTabAct.triggered.connect(this.onOpenInTab)
+        fileMenu.addAction(openTabAct)
         QAction saveAct = QAction(t("action_save"), this)
         saveAct.setShortcut("Ctrl+S")
         saveAct.triggered.connect(this.onSave)

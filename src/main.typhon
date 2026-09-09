@@ -8,6 +8,7 @@ from paths import prepareWebEngine
 from i18n import setLanguage, currentLanguage
 from qtlang import applyQtLanguage, detectAppLanguage
 from ui import MarkdownViewer
+from instance import InstanceHub
 import sys
 
 prepareWebEngine()
@@ -15,6 +16,23 @@ QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, true)
 QApplication qtApp = QApplication(sys.argv)
 setLanguage(detectAppLanguage())
 applyQtLanguage(qtApp, currentLanguage())
+InstanceHub hub = InstanceHub()
+if (hub.sendToPeer(sys.argv)) {
+    sys.exit(0)
+}
 MarkdownViewer window = MarkdownViewer()
+if (!hub.listen(window)) {
+    if (hub.sendToPeer(sys.argv)) {
+        sys.exit(0)
+    }
+}
+int i = 1
+loop (i < len(sys.argv)) {
+    string arg = str(sys.argv[i])
+    if (!arg.startswith("-")) {
+        window.openFromArg(arg)
+    }
+    i++
+}
 window.show()
 qtApp.exec()

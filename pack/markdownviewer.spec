@@ -30,6 +30,8 @@ hiddenimports = [
     "i18n",
     "icons",
     "qtlang",
+    "instance",
+    "PyQt6.QtNetwork",
 ]
 
 excludes = [

@@ -1,0 +1,65 @@
+# One running window: a second process sends file paths over a local socket.
+
+from PyQt6.QtCore import QObject
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+from ui import MarkdownViewer
+
+string SOCKET_NAME = "MarkdownViewer"
+
+package class InstanceHub inherits QObject {
+    public QLocalServer server
+    public MarkdownViewer window
+
+    public constructor() {
+        this.server = QLocalServer()
+        this.server.newConnection.connect(this.onNewConnection)
+    }
+
+    public bool sendToPeer(object argv) {
+        QLocalSocket sock = QLocalSocket()
+        sock.connectToServer(SOCKET_NAME)
+        if (!sock.waitForConnected(400)) {
+            return false
+        }
+        string body = ""
+        int i = 1
+        loop (i < len(argv)) {
+            string arg = str(argv[i])
+            if (!arg.startswith("-")) {
+                body = body + arg + "\n"
+            }
+            i++
+        }
+        if (body == "") {
+            body = "\n"
+        }
+        sock.write(body.encode("utf-8"))
+        sock.waitForBytesWritten(800)
+        sock.disconnectFromServer()
+        sock.waitForDisconnected(800)
+        return true
+    }
+
+    public bool listen(MarkdownViewer host) {
+        this.window = host
+        QLocalServer.removeServer(SOCKET_NAME)
+        return this.server.listen(SOCKET_NAME)
+    }
+
+    public onNewConnection() {
+        QLocalSocket client = this.server.nextPendingConnection()
+        client.waitForReadyRead(1500)
+        string text = bytes(client.readAll()).decode("utf-8")
+        client.disconnectFromServer()
+        var lines = text.split("\n")
+        int i = 0
+        loop (i < len(lines)) {
+            string line = lines[i].strip()
+            if (line != "") {
+                this.window.openFromArg(line)
+            }
+            i++
+        }
+        this.window.bringToFront()
+    }
+}
