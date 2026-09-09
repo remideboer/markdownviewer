@@ -64,6 +64,10 @@
   var applying = false;
   var debounceTimer = null;
   var mermaidSeq = 0;
+  var UNDO_LIMIT = 100;
+  var undoPast = [];
+  var undoFuture = [];
+  var lastSnap = null;
 
   function escapeHtml(text) {
     return String(text)
@@ -92,8 +96,7 @@
     scheduleNotify();
   }
 
-  function unwrapToParagraph() {
-    var article = document.getElementById("doc");
+  function headingFromCaret(article) {
     var sel = window.getSelection();
     var node = sel && sel.anchorNode ? sel.anchorNode : null;
     var el = node;
@@ -102,16 +105,185 @@
     }
     while (el && el !== article) {
       if (el.nodeType === 1 && /^H[1-6]$/i.test(el.tagName)) {
-        var p = document.createElement("p");
-        while (el.firstChild) {
-          p.appendChild(el.firstChild);
-        }
-        el.parentNode.replaceChild(p, el);
-        return;
+        return el;
       }
       el = el.parentElement;
     }
+    return null;
+  }
+
+  function headingToParagraph(heading) {
+    var p = document.createElement("p");
+    while (heading.firstChild) {
+      p.appendChild(heading.firstChild);
+    }
+    heading.parentNode.replaceChild(p, heading);
+    var sel = window.getSelection();
+    if (!sel) {
+      return;
+    }
+    var range = document.createRange();
+    range.selectNodeContents(p);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function unwrapToParagraph() {
+    var article = document.getElementById("doc");
+    var heading = headingFromCaret(article);
+    if (heading) {
+      headingToParagraph(heading);
+      return;
+    }
     document.execCommand("formatBlock", false, "p");
+  }
+
+  function applyHeading(tag) {
+    var name = String(tag || "")
+      .replace(/[<>]/g, "")
+      .toLowerCase();
+    if (name === "p") {
+      unwrapToParagraph();
+      return;
+    }
+    var article = document.getElementById("doc");
+    var heading = headingFromCaret(article);
+    if (heading && heading.tagName.toLowerCase() === name) {
+      headingToParagraph(heading);
+      return;
+    }
+    document.execCommand("formatBlock", false, name);
+  }
+
+  function isBoldWrap(el) {
+    if (!el || el.nodeType !== 1) {
+      return false;
+    }
+    if (el.tagName === "B" || el.tagName === "STRONG") {
+      return true;
+    }
+    if (el.tagName !== "SPAN") {
+      return false;
+    }
+    var weight = String((el.style && el.style.fontWeight) || "").toLowerCase();
+    return (
+      weight === "bold" ||
+      weight === "bolder" ||
+      weight === "600" ||
+      weight === "700" ||
+      weight === "800" ||
+      weight === "900"
+    );
+  }
+
+  function closestBold(node, article) {
+    var el = node;
+    if (el && el.nodeType === 3) {
+      el = el.parentElement;
+    }
+    while (el && el !== article) {
+      if (isBoldWrap(el)) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function rangeTouchesNode(range, node) {
+    if (!range || !node) {
+      return false;
+    }
+    if (range.intersectsNode) {
+      return range.intersectsNode(node);
+    }
+    var other = document.createRange();
+    other.selectNode(node);
+    return (
+      range.compareBoundaryPoints(Range.END_TO_START, other) < 0 &&
+      range.compareBoundaryPoints(Range.START_TO_END, other) > 0
+    );
+  }
+
+  function findBoldWrap(article) {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      return null;
+    }
+    var range = sel.getRangeAt(0);
+    var wrap = closestBold(range.startContainer, article);
+    if (wrap) {
+      return wrap;
+    }
+    wrap = closestBold(range.endContainer, article);
+    if (wrap) {
+      return wrap;
+    }
+    wrap = closestBold(range.commonAncestorContainer, article);
+    if (wrap) {
+      return wrap;
+    }
+    var root = range.commonAncestorContainer;
+    if (root.nodeType !== 1) {
+      root = root.parentElement;
+    }
+    if (!root || !root.querySelectorAll) {
+      return null;
+    }
+    var nodes = root.querySelectorAll("strong, b, span");
+    var i = 0;
+    while (i < nodes.length) {
+      var node = nodes[i];
+      if (isBoldWrap(node) && rangeTouchesNode(range, node)) {
+        return node;
+      }
+      i += 1;
+    }
+    return null;
+  }
+
+  function unwrapElement(el) {
+    var parent = el.parentNode;
+    if (!parent) {
+      return;
+    }
+    var first = el.firstChild;
+    while (el.firstChild) {
+      parent.insertBefore(el.firstChild, el);
+    }
+    parent.removeChild(el);
+    if (!first) {
+      return;
+    }
+    var sel = window.getSelection();
+    if (!sel) {
+      return;
+    }
+    var range = document.createRange();
+    range.setStartBefore(first);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function toggleBold() {
+    var article = document.getElementById("doc");
+    var wrap = findBoldWrap(article);
+    if (wrap) {
+      unwrapElement(wrap);
+      return;
+    }
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      var range = sel.getRangeAt(0);
+      var strong = document.createElement("strong");
+      try {
+        range.surroundContents(strong);
+        return;
+      } catch (err) {}
+    }
+    document.execCommand("bold", false, false);
   }
 
   function slugify(text) {
@@ -189,6 +361,114 @@
     });
   }
 
+  function caretOffset(root) {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !root.contains(sel.anchorNode)) {
+      return 0;
+    }
+    var range = sel.getRangeAt(0);
+    var pre = document.createRange();
+    pre.selectNodeContents(root);
+    pre.setEnd(range.startContainer, range.startOffset);
+    return pre.toString().length;
+  }
+
+  function setCaretOffset(root, offset) {
+    var remain = offset;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var node = walker.nextNode();
+    var sel = window.getSelection();
+    var range = document.createRange();
+    while (node) {
+      var len = node.nodeValue.length;
+      if (remain <= len) {
+        range.setStart(node, remain);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return;
+      }
+      remain -= len;
+      node = walker.nextNode();
+    }
+    range.selectNodeContents(root);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function takeSnap() {
+    var article = document.getElementById("doc");
+    return {
+      html: article.innerHTML,
+      caret: caretOffset(article),
+    };
+  }
+
+  function resetHistory() {
+    undoPast = [];
+    undoFuture = [];
+    lastSnap = takeSnap();
+  }
+
+  function trimStack(stack) {
+    while (stack.length > UNDO_LIMIT) {
+      stack.shift();
+    }
+  }
+
+  function recordHistory() {
+    if (applying) {
+      return;
+    }
+    var snap = takeSnap();
+    if (lastSnap && snap.html === lastSnap.html) {
+      lastSnap = snap;
+      return;
+    }
+    if (lastSnap) {
+      undoPast.push(lastSnap);
+      trimStack(undoPast);
+    }
+    undoFuture = [];
+    lastSnap = snap;
+  }
+
+  function restoreSnap(snap) {
+    applying = true;
+    var article = document.getElementById("doc");
+    article.innerHTML = snap.html;
+    if (window.MermaidEdit) {
+      window.MermaidEdit.bind(article);
+    }
+    setCaretOffset(article, snap.caret || 0);
+    lastSnap = snap;
+    applying = false;
+    notifyChange();
+  }
+
+  function undoEdit() {
+    clearTimeout(debounceTimer);
+    recordHistory();
+    if (!undoPast.length) {
+      return;
+    }
+    undoFuture.push(takeSnap());
+    trimStack(undoFuture);
+    restoreSnap(undoPast.pop());
+  }
+
+  function redoEdit() {
+    clearTimeout(debounceTimer);
+    recordHistory();
+    if (!undoFuture.length) {
+      return;
+    }
+    undoPast.push(takeSnap());
+    trimStack(undoPast);
+    restoreSnap(undoFuture.pop());
+  }
+
   function setMarkdown(text) {
     applying = true;
     var article = document.getElementById("doc");
@@ -197,6 +477,7 @@
     slugifyHeadings(article);
     return renderMermaidWidgets(article).then(function () {
       applying = false;
+      resetHistory();
     });
   }
 
@@ -219,7 +500,10 @@
       return;
     }
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(notifyChange, 250);
+    debounceTimer = setTimeout(function () {
+      recordHistory();
+      notifyChange();
+    }, 250);
   }
 
   function isEmptyListItem(li) {
@@ -451,13 +735,27 @@
   window.handleEditorTab = handleEditorTab;
   window.execEditorCommand = function (name, arg, arg2) {
     var article = document.getElementById("doc");
+    var sel = window.getSelection();
+    var saved = null;
+    if (sel && sel.rangeCount > 0) {
+      saved = sel.getRangeAt(0).cloneRange();
+    }
     article.focus();
+    if (saved) {
+      sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(saved);
+    }
     if (name === "heading") {
-      if (arg === "p") {
-        unwrapToParagraph();
-      } else {
-        document.execCommand("formatBlock", false, arg);
-      }
+      applyHeading(arg);
+    } else if (name === "bold") {
+      toggleBold();
+    } else if (name === "undo") {
+      undoEdit();
+      return;
+    } else if (name === "redo") {
+      redoEdit();
+      return;
     } else if (name === "insertLink") {
       insertLink(arg, arg2 || "");
       return;
@@ -509,6 +807,25 @@
       function (event) {
         if (event.key === "Tab") {
           event.preventDefault();
+        }
+      },
+      true
+    );
+    document.addEventListener(
+      "keydown",
+      function (event) {
+        if (!(event.ctrlKey || event.metaKey)) {
+          return;
+        }
+        var key = event.key.toLowerCase();
+        if (key === "z" && !event.shiftKey) {
+          event.preventDefault();
+          undoEdit();
+          return;
+        }
+        if (key === "y" || (key === "z" && event.shiftKey)) {
+          event.preventDefault();
+          redoEdit();
         }
       },
       true
