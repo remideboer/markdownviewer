@@ -110,10 +110,180 @@ body {
   border-radius: 8px;
   background: #faf8f4;
   overflow-x: auto;
+  cursor: pointer;
+}
+
+.mermaid-widget.mmd-editing {
+  cursor: default;
+  padding: 0.65em 0.75em 0.85em;
 }
 
 .mermaid-error {
   color: #8b1e1e;
   white-space: pre-wrap;
   margin: 0;
+}
+
+.mmd-edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin-bottom: 0.4em;
+}
+
+.mmd-edit-bar button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25em 0.7em;
+  border: 1px solid #cfc6b6;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.mmd-edit-bar button:hover {
+  background: #f3efe6;
+}
+
+.mmd-edit-hint {
+  font-size: 0.82rem;
+  color: #6b6458;
+  margin-bottom: 0.5em;
+}
+
+.mmd-canvas {
+  position: relative;
+  min-height: 180px;
+  background: #fff;
+  border: 1px dashed #e0d9cc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mmd-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.mmd-edge {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.mmd-edge-label {
+  font-size: 12px;
+  fill: #5c5346;
+}
+
+.mmd-node {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 96px;
+  max-width: 168px;
+  padding: 0.45em 0.7em;
+  background: #fff;
+  border: 2px solid #5c5346;
+  border-radius: 6px;
+  cursor: grab;
+  text-align: center;
+}
+
+.mmd-node.is-selected {
+  border-color: #0b57d0;
+  box-shadow: 0 0 0 2px rgba(11, 87, 208, 0.2);
+}
+
+.mmd-node.shape-round {
+  border-radius: 18px;
+}
+
+.mmd-node.shape-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 72px;
+  border-radius: 999px;
+}
+
+.mmd-node.shape-diamond {
+  background: #fff8e8;
+}
+
+.mmd-label {
+  display: block;
+  outline: none;
+}
+
+.mmd-extra {
+  display: block;
+  margin-top: 0.25em;
+  font-size: 0.75rem;
+  color: #6b6458;
+  white-space: pre-wrap;
+  outline: none;
+}
+
+.mmd-node.shape-circle {
+  flex-direction: column;
+}
+
+.mmd-edit.is-connecting .mmd-node {
+  cursor: crosshair;
+}
+
+.mmd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  background: #fff;
+  border: 1px dashed #e0d9cc;
+  border-radius: 6px;
+  padding: 0.6em;
+}
+
+.mmd-row {
+  display: flex;
+  gap: 0.4em;
+  align-items: center;
+}
+
+.mmd-row.is-selected input {
+  border-color: #0b57d0;
+}
+
+.mmd-row input,
+.mmd-list > input,
+.mmd-kanban-col input {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.25em 0.45em;
+  border: 1px solid #cfc6b6;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.mmd-kanban {
+  display: flex;
+  gap: 0.6em;
+  overflow-x: auto;
+}
+
+.mmd-kanban-col {
+  min-width: 10rem;
+  background: #fff;
+  border: 1px dashed #e0d9cc;
+  border-radius: 6px;
+  padding: 0.45em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+
+.mmd-kanban-card {
+  width: 100%;
+  box-sizing: border-box;
 }

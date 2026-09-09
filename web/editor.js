@@ -131,10 +131,20 @@
     });
   }
 
+  function mermaidTargets(root) {
+    if (root.classList && root.classList.contains("mermaid-widget")) {
+      return [root];
+    }
+    return Array.prototype.slice.call(root.querySelectorAll(".mermaid-widget"));
+  }
+
   function renderMermaidWidgets(root) {
-    var nodes = root.querySelectorAll(".mermaid-widget");
+    var nodes = mermaidTargets(root);
     var jobs = [];
     nodes.forEach(function (node) {
+      if (node.classList.contains("mmd-editing")) {
+        return;
+      }
       var src = decodeURIComponent(node.getAttribute("data-mermaid") || "");
       var id = "mmd-" + mermaidSeq;
       mermaidSeq += 1;
@@ -150,7 +160,11 @@
           })
       );
     });
-    return Promise.all(jobs);
+    return Promise.all(jobs).then(function () {
+      if (window.MermaidEdit) {
+        window.MermaidEdit.bind(root);
+      }
+    });
   }
 
   function setMarkdown(text) {
@@ -163,6 +177,8 @@
       applying = false;
     });
   }
+
+  window.setMarkdown = setMarkdown;
 
   function toMarkdown() {
     var article = document.getElementById("doc");
@@ -425,6 +441,11 @@
     } else if (name === "insertTaskList") {
       insertTaskList();
       return;
+    } else if (name === "insertMermaidFlowchart" || name === "insertMermaid") {
+      if (window.MermaidEdit) {
+        window.MermaidEdit.insert(arg || "flowchart");
+      }
+      return;
     } else if (name === "insertHorizontalRule") {
       document.execCommand("insertHorizontalRule", false, false);
     } else {
@@ -448,6 +469,12 @@
       startOnLoad: false,
       securityLevel: "strict",
     });
+    if (window.MermaidEdit) {
+      window.MermaidEdit.attach({
+        scheduleNotify: scheduleNotify,
+        renderWidget: renderMermaidWidgets,
+      });
+    }
     var article = document.getElementById("doc");
     article.addEventListener("input", scheduleNotify);
     article.addEventListener("keydown", onListEnter);

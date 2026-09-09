@@ -5,7 +5,7 @@ from tab import EditorTab
 from links import classifyHref, resolveMarkdownLink
 from i18n import t
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QUrl, QTimer
 
@@ -319,6 +319,96 @@ package class MarkdownViewer inherits QMainWindow {
         this.currentTab().runCommand("insertCodeFence", lang, "")
     }
 
+    public string mermaidKindId(int idx) {
+        if (idx == 1) {
+            return "sequence"
+        }
+        if (idx == 2) {
+            return "class"
+        }
+        if (idx == 3) {
+            return "state"
+        }
+        if (idx == 4) {
+            return "er"
+        }
+        if (idx == 5) {
+            return "c4context"
+        }
+        if (idx == 6) {
+            return "c4container"
+        }
+        if (idx == 7) {
+            return "c4component"
+        }
+        if (idx == 8) {
+            return "c4dynamic"
+        }
+        if (idx == 9) {
+            return "pie"
+        }
+        if (idx == 10) {
+            return "gantt"
+        }
+        if (idx == 11) {
+            return "timeline"
+        }
+        if (idx == 12) {
+            return "journey"
+        }
+        if (idx == 13) {
+            return "quadrant"
+        }
+        if (idx == 14) {
+            return "git"
+        }
+        if (idx == 15) {
+            return "mindmap"
+        }
+        if (idx == 16) {
+            return "kanban"
+        }
+        return "flowchart"
+    }
+
+    public onMermaid() {
+        QDialog dlg = QDialog(this)
+        dlg.setWindowTitle(t("dialog_insert_mermaid"))
+        QComboBox kindBox = QComboBox()
+        kindBox.addItem(t("mermaid_kind_flowchart"))
+        kindBox.addItem(t("mermaid_kind_sequence"))
+        kindBox.addItem(t("mermaid_kind_class"))
+        kindBox.addItem(t("mermaid_kind_state"))
+        kindBox.addItem(t("mermaid_kind_er"))
+        kindBox.addItem(t("mermaid_kind_c4context"))
+        kindBox.addItem(t("mermaid_kind_c4container"))
+        kindBox.addItem(t("mermaid_kind_c4component"))
+        kindBox.addItem(t("mermaid_kind_c4dynamic"))
+        kindBox.addItem(t("mermaid_kind_pie"))
+        kindBox.addItem(t("mermaid_kind_gantt"))
+        kindBox.addItem(t("mermaid_kind_timeline"))
+        kindBox.addItem(t("mermaid_kind_journey"))
+        kindBox.addItem(t("mermaid_kind_quadrant"))
+        kindBox.addItem(t("mermaid_kind_git"))
+        kindBox.addItem(t("mermaid_kind_mindmap"))
+        kindBox.addItem(t("mermaid_kind_kanban"))
+        QFormLayout form = QFormLayout()
+        form.addRow(t("dialog_mermaid_type"), kindBox)
+        QDialogButtonBox buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        QVBoxLayout box = QVBoxLayout(dlg)
+        box.addLayout(form)
+        box.addWidget(buttons)
+        if (dlg.exec() != QDialog.DialogCode.Accepted) {
+            return
+        }
+        string kind = this.mermaidKindId(kindBox.currentIndex())
+        this.currentTab().runCommand("insertMermaid", kind, "")
+    }
+
     public buildMenus() {
         var fileMenu = this.menuBar().addMenu(t("menu_file"))
         QAction newAct = QAction(t("action_new"), this)
@@ -389,5 +479,9 @@ package class MarkdownViewer inherits QMainWindow {
         codeAct.setToolTip(t("code_tip"))
         codeAct.triggered.connect(this.onCodeFence)
         bar.addAction(codeAct)
+        QAction mermaidAct = QAction(t("mermaid"), this)
+        mermaidAct.setToolTip(t("mermaid_tip"))
+        mermaidAct.triggered.connect(this.onMermaid)
+        bar.addAction(mermaidAct)
     }
 }

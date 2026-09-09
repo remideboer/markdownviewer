@@ -11,7 +11,7 @@ The window is a small native shell with a Chromium editor inside. Menus and dial
 - Open, save, and save-as markdown (`.md` / `.markdown`)
 - Edit the rendered document: bold, headings, links, lists, a horizontal rule, and a task list
 - Toggle GFM checkboxes (`- [ ]` / `- [x]`); the change is written back into the file
-- Render fenced ` ```mermaid ` diagrams (view-only; there is no visual diagram editor yet)
+- Render fenced ` ```mermaid ` diagrams. Use **Diagram** to insert a type (flowchart, sequence, class, state, ER, C4, pie, gantt, and more). Double-click a diagram to edit it visually; the mermaid source is updated.
 - Follow links with a normal click:
   - `http` / `https` / `mailto` open in the system browser
   - `#anker` scrolls in the current document
@@ -21,7 +21,7 @@ The window is a small native shell with a Chromium editor inside. Menus and dial
 
 Link *text* is edited by selecting it and using the **Link** toolbar button, not by clicking the link.
 
-Try `samples/demo.md`. It includes a rule, a checklist, a link to `samples/linked.md`, an external URL, and a Mermaid flowchart.
+Try `samples/demo.md`. It includes a rule, a checklist, a link to `samples/linked.md`, an external URL, and several Mermaid diagrams you can double-click to edit.
 
 ## Requirements
 
@@ -65,9 +65,10 @@ $env:PYTHONPATH = "D:\projecten\python-transpiler"
 python -m transpiler run tests/test_document.typhon
 python -m transpiler run tests/test_links.typhon
 python -m transpiler run tests/test_i18n.typhon
+node tests/test_mermaid_flow.js
 ```
 
-These cover file load/save, resolving local markdown links, and English/Dutch UI strings.
+These cover file load/save, resolving local markdown links, English/Dutch UI strings, and mermaid diagram round-trips.
 
 ## How it is put together
 
