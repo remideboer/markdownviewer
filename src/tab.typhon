@@ -6,8 +6,7 @@ from bridge import EditorBridge
 from i18n import t, currentLanguage
 from pathlib import Path
 from PyQt6.QtCore import QUrl, Qt, QEvent
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QMenu
-from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEngineSettings
@@ -15,6 +14,10 @@ import json
 
 package class EditorView inherits QWebEngineView {
     public constructor() {
+    }
+
+    public contextMenuEvent(object event) {
+        this.customContextMenuRequested.emit(event.pos())
     }
 
     public bool event(object ev) {
@@ -66,7 +69,6 @@ package class EditorTab inherits QWidget {
             true
         )
         this.view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        this.view.customContextMenuRequested.connect(this.onContextMenu)
         this.view.loadFinished.connect(this.onEditorLoaded)
         QVBoxLayout layout = QVBoxLayout(this)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -107,25 +109,6 @@ package class EditorTab inherits QWidget {
         }
         string js = "window.execEditorCommand(" + json.dumps(name) + ", " + json.dumps(arg) + ", " + json.dumps(arg2) + ")"
         this.view.page().runJavaScript(js)
-    }
-
-    public onContextMenu(object pos) {
-        QMenu menu = QMenu(this)
-        QAction undoAct = menu.addAction(t("undo"))
-        undoAct.triggered.connect(this.onUndo)
-        QAction redoAct = menu.addAction(t("redo"))
-        redoAct.triggered.connect(this.onRedo)
-        menu.addSeparator()
-        QAction cutAct = menu.addAction(t("cut"))
-        cutAct.triggered.connect(this.onCut)
-        QAction copyAct = menu.addAction(t("copy"))
-        copyAct.triggered.connect(this.onCopy)
-        QAction pasteAct = menu.addAction(t("paste"))
-        pasteAct.triggered.connect(this.onPaste)
-        menu.addSeparator()
-        QAction selectAct = menu.addAction(t("select_all"))
-        selectAct.triggered.connect(this.onSelectAll)
-        menu.exec(this.view.mapToGlobal(pos))
     }
 
     public onUndo() {

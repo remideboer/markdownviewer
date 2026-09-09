@@ -5,7 +5,7 @@ from tab import EditorTab
 from links import classifyHref, resolveMarkdownLink
 from i18n import t
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QUrl, QTimer
 
@@ -42,6 +42,7 @@ package class MarkdownViewer inherits QMainWindow {
 
     public EditorTab addEditorTab() {
         EditorTab tab = EditorTab()
+        tab.view.customContextMenuRequested.connect(this.onEditorContextMenu)
         this.pages.append(tab)
         this.tabs.addTab(tab, tab.tabLabel())
         this.tabs.setCurrentWidget(tab)
@@ -249,6 +250,48 @@ package class MarkdownViewer inherits QMainWindow {
 
     public string mdFilter() {
         return "Markdown (*.md *.markdown);;" + t("all_files")
+    }
+
+    public onEditorContextMenu(object pos) {
+        EditorTab tab = this.currentTab()
+        QMenu menu = QMenu(this)
+        QAction undoAct = menu.addAction(t("undo"))
+        undoAct.triggered.connect(tab.onUndo)
+        QAction redoAct = menu.addAction(t("redo"))
+        redoAct.triggered.connect(tab.onRedo)
+        menu.addSeparator()
+        QAction cutAct = menu.addAction(t("cut"))
+        cutAct.triggered.connect(tab.onCut)
+        QAction copyAct = menu.addAction(t("copy"))
+        copyAct.triggered.connect(tab.onCopy)
+        QAction pasteAct = menu.addAction(t("paste"))
+        pasteAct.triggered.connect(tab.onPaste)
+        QAction selectAct = menu.addAction(t("select_all"))
+        selectAct.triggered.connect(tab.onSelectAll)
+        menu.addSeparator()
+        QAction boldAct = menu.addAction(t("bold"))
+        boldAct.triggered.connect(this.onBold)
+        QAction h1Act = menu.addAction(t("h1"))
+        h1Act.triggered.connect(this.onH1)
+        QAction h2Act = menu.addAction(t("h2"))
+        h2Act.triggered.connect(this.onH2)
+        QAction h3Act = menu.addAction(t("h3"))
+        h3Act.triggered.connect(this.onH3)
+        QAction linkAct = menu.addAction(t("link"))
+        linkAct.triggered.connect(this.onLink)
+        QAction ulAct = menu.addAction(t("list"))
+        ulAct.triggered.connect(this.onBulletList)
+        QAction olAct = menu.addAction(t("numbered"))
+        olAct.triggered.connect(this.onNumberList)
+        QAction hrAct = menu.addAction(t("rule"))
+        hrAct.triggered.connect(this.onHr)
+        QAction taskAct = menu.addAction(t("tasks"))
+        taskAct.triggered.connect(this.onTaskList)
+        QAction codeAct = menu.addAction(t("code"))
+        codeAct.triggered.connect(this.onCodeFence)
+        QAction mermaidAct = menu.addAction(t("mermaid"))
+        mermaidAct.triggered.connect(this.onMermaid)
+        menu.exec(tab.view.mapToGlobal(pos))
     }
 
     public onBold() {
