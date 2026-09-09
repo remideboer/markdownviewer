@@ -5,7 +5,7 @@ from tab import EditorTab
 from links import classifyHref, resolveMarkdownLink
 from i18n import t
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QUrl, QTimer
 
@@ -310,6 +310,15 @@ package class MarkdownViewer inherits QMainWindow {
         this.currentTab().runCommand("insertTaskList", "", "")
     }
 
+    public onCodeFence() {
+        var picked = QInputDialog.getText(this, t("dialog_insert_code"), t("dialog_code_lang"))
+        if (!picked[1]) {
+            return
+        }
+        string lang = str(picked[0]).strip()
+        this.currentTab().runCommand("insertCodeFence", lang, "")
+    }
+
     public buildMenus() {
         var fileMenu = this.menuBar().addMenu(t("menu_file"))
         QAction newAct = QAction(t("action_new"), this)
@@ -376,5 +385,9 @@ package class MarkdownViewer inherits QMainWindow {
         taskAct.setToolTip(t("tasks_tip"))
         taskAct.triggered.connect(this.onTaskList)
         bar.addAction(taskAct)
+        QAction codeAct = QAction(t("code"), this)
+        codeAct.setToolTip(t("code_tip"))
+        codeAct.triggered.connect(this.onCodeFence)
+        bar.addAction(codeAct)
     }
 }

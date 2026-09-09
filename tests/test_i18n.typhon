@@ -30,10 +30,12 @@ assertTrue("untitled nl", t("untitled") == "Naamloos")
 assertTrue("menu nl", t("menu_file") == "&Bestand")
 assertTrue("link text nl", t("dialog_link_text") == "Linktekst:")
 assertTrue("cut nl", t("cut") == "Knippen")
+assertTrue("code nl", t("code") == "Code")
 
 setLanguage("en")
 assertTrue("link text en", t("dialog_link_text") == "Link text:")
 assertTrue("cut en", t("cut") == "Cut")
+assertTrue("code lang en", t("dialog_code_lang") == "Language (optional):")
 
 setLanguage("fr")
 assertTrue("unknown falls to en", currentLanguage() == "en")

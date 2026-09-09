@@ -321,6 +321,38 @@
     }
   }
 
+  function insertCodeFence(lang) {
+    var article = document.getElementById("doc");
+    article.focus();
+    var info = String(lang || "").replace(/[^\w.+-]/g, "");
+    var sel = window.getSelection();
+    var selected = "";
+    if (sel && sel.rangeCount > 0 && article.contains(sel.anchorNode)) {
+      selected = sel.toString();
+    }
+    var pre = document.createElement("pre");
+    var code = document.createElement("code");
+    if (info) {
+      code.className = "language-" + info;
+    }
+    code.textContent = selected || "\n";
+    pre.appendChild(code);
+    if (sel && sel.rangeCount > 0 && article.contains(sel.anchorNode)) {
+      var range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(pre);
+    } else {
+      article.appendChild(pre);
+    }
+    var caret = document.createRange();
+    caret.selectNodeContents(code);
+    caret.collapse(false);
+    var caretSel = window.getSelection();
+    caretSel.removeAllRanges();
+    caretSel.addRange(caret);
+    scheduleNotify();
+  }
+
   function insertTaskList() {
     var article = document.getElementById("doc");
     article.focus();
@@ -362,6 +394,9 @@
       document.execCommand("formatBlock", false, arg);
     } else if (name === "insertLink") {
       insertLink(arg, arg2 || "");
+      return;
+    } else if (name === "insertCodeFence") {
+      insertCodeFence(arg || "");
       return;
     } else if (name === "insertTaskList") {
       insertTaskList();

@@ -47,6 +47,10 @@ dict<string, string> EN = {
     "rule_tip": "Horizontal rule",
     "tasks": "Tasks",
     "tasks_tip": "Task list",
+    "code": "Code",
+    "code_tip": "Code block",
+    "dialog_insert_code": "Insert code",
+    "dialog_code_lang": "Language (optional):",
     "all_files": "All files (*.*)",
     "editor_placeholder": "Open a markdown file or start typing…"
 }
@@ -96,6 +100,10 @@ dict<string, string> NL = {
     "rule_tip": "Horizontale lijn",
     "tasks": "Taken",
     "tasks_tip": "Takenlijst",
+    "code": "Code",
+    "code_tip": "Codeblok",
+    "dialog_insert_code": "Code invoegen",
+    "dialog_code_lang": "Taal (optioneel):",
     "all_files": "Alle bestanden (*.*)",
     "editor_placeholder": "Open een markdown-bestand of begin te typen…"
 }
