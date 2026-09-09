@@ -386,7 +386,31 @@
       document.documentElement.lang = lang;
     }
   };
-  window.setMarkdown = setMarkdown;
+  function handleEditorTab(shift) {
+    var article = document.getElementById("doc");
+    if (!article) {
+      return;
+    }
+    article.focus();
+    var sel = window.getSelection();
+    var node = sel && sel.anchorNode;
+    var el = node && (node.nodeType === 1 ? node : node.parentElement);
+    if (el && el.closest(".mermaid-widget")) {
+      return;
+    }
+    if (el && el.closest("li") && !el.closest("pre")) {
+      document.execCommand(shift ? "outdent" : "indent", false, false);
+      scheduleNotify();
+      return;
+    }
+    if (shift) {
+      return;
+    }
+    document.execCommand("insertText", false, "    ");
+    scheduleNotify();
+  }
+
+  window.handleEditorTab = handleEditorTab;
   window.execEditorCommand = function (name, arg, arg2) {
     var article = document.getElementById("doc");
     article.focus();
@@ -427,6 +451,15 @@
     var article = document.getElementById("doc");
     article.addEventListener("input", scheduleNotify);
     article.addEventListener("keydown", onListEnter);
+    article.addEventListener(
+      "keydown",
+      function (event) {
+        if (event.key === "Tab") {
+          event.preventDefault();
+        }
+      },
+      true
+    );
     article.addEventListener("change", function (event) {
       if (event.target && event.target.matches('input[type="checkbox"]')) {
         scheduleNotify();

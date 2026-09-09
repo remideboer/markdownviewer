@@ -5,7 +5,7 @@ from document import MarkdownDocument
 from bridge import EditorBridge
 from i18n import t, currentLanguage
 from pathlib import Path
-from PyQt6.QtCore import QUrl, Qt
+from PyQt6.QtCore import QUrl, Qt, QEvent
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QMenu
 from PyQt6.QtGui import QAction
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -13,10 +13,41 @@ from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEngineSettings
 import json
 
+package class EditorView inherits QWebEngineView {
+    public constructor() {
+    }
+
+    public bool event(object ev) {
+        int kind = ev.type()
+        if (kind == QEvent.Type.ShortcutOverride || kind == QEvent.Type.KeyPress) {
+            int key = ev.key()
+            if (key == Qt.Key.Key_Tab || key == Qt.Key.Key_Backtab) {
+                if (kind == QEvent.Type.ShortcutOverride) {
+                    ev.accept()
+                    return true
+                }
+                string shift = "false"
+                if (key == Qt.Key.Key_Backtab) {
+                    shift = "true"
+                }
+                if (key == Qt.Key.Key_Tab) {
+                    int mods = ev.modifiers()
+                    if (mods & Qt.KeyboardModifier.ShiftModifier) {
+                        shift = "true"
+                    }
+                }
+                this.page().runJavaScript("if (window.handleEditorTab) { window.handleEditorTab(" + shift + "); }")
+                return true
+            }
+        }
+        return QWebEngineView.event(this, ev)
+    }
+}
+
 package class EditorTab inherits QWidget {
     public MarkdownDocument doc
     public EditorBridge editorBridge
-    public QWebEngineView view
+    public EditorView view
     public QWebChannel channel
     public bool editorReady
 
@@ -26,7 +57,7 @@ package class EditorTab inherits QWidget {
         this.editorBridge = EditorBridge()
         this.editorBridge.doc = this.doc
         this.editorBridge.pendingHref = ""
-        this.view = QWebEngineView()
+        this.view = EditorView()
         this.channel = QWebChannel()
         this.channel.registerObject("bridge", this.editorBridge)
         this.view.page().setWebChannel(this.channel)
