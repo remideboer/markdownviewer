@@ -5,17 +5,24 @@ from tab import EditorTab
 from links import classifyHref, resolveMarkdownLink
 from i18n import t
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu
-from PyQt6.QtGui import QAction, QDesktopServices
-from PyQt6.QtCore import QUrl, QTimer
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget
+from PyQt6.QtGui import QAction, QDesktopServices, QPageLayout, QPageSize
+from PyQt6.QtCore import QUrl, QTimer, QMarginsF
+import json
+import os
+import shutil
 
 package class MarkdownViewer inherits QMainWindow {
     private QTabWidget tabs
     private list<EditorTab> pages
     private QTimer titleTimer
+    private string pendingPdf
+    private QLineEdit imageSrcEdit
 
     public constructor() {
         this.pages = []
+        this.pendingPdf = ""
+        this.imageSrcEdit = QLineEdit()
         this.setWindowTitle("MarkdownViewer")
         this.resize(960, 720)
         this.buildMenus()
@@ -43,6 +50,7 @@ package class MarkdownViewer inherits QMainWindow {
     public EditorTab addEditorTab() {
         EditorTab tab = EditorTab()
         tab.view.customContextMenuRequested.connect(this.onEditorContextMenu)
+        tab.view.page().pdfPrintingFinished.connect(this.onPdfFinished)
         this.pages.append(tab)
         this.tabs.addTab(tab, tab.tabLabel())
         this.tabs.setCurrentWidget(tab)
@@ -285,14 +293,32 @@ package class MarkdownViewer inherits QMainWindow {
         h2Act.triggered.connect(this.onH2)
         QAction h3Act = menu.addAction(t("h3"))
         h3Act.triggered.connect(this.onH3)
+        QAction h4Act = menu.addAction(t("h4"))
+        h4Act.triggered.connect(this.onH4)
+        QAction h5Act = menu.addAction(t("h5"))
+        h5Act.triggered.connect(this.onH5)
+        QAction h6Act = menu.addAction(t("h6"))
+        h6Act.triggered.connect(this.onH6)
         QAction textAct = menu.addAction(t("text"))
         textAct.triggered.connect(this.onParagraph)
+        QAction italicAct = menu.addAction(t("italic"))
+        italicAct.triggered.connect(this.onItalic)
+        QAction strikeAct = menu.addAction(t("strike"))
+        strikeAct.triggered.connect(this.onStrike)
+        QAction quoteAct = menu.addAction(t("quote"))
+        quoteAct.triggered.connect(this.onQuote)
         QAction linkAct = menu.addAction(t("link"))
         linkAct.triggered.connect(this.onLink)
+        QAction imageAct = menu.addAction(t("image"))
+        imageAct.triggered.connect(this.onImage)
         QAction ulAct = menu.addAction(t("list"))
         ulAct.triggered.connect(this.onBulletList)
         QAction olAct = menu.addAction(t("numbered"))
         olAct.triggered.connect(this.onNumberList)
+        QAction tableAct = menu.addAction(t("table"))
+        tableAct.triggered.connect(this.onTable)
+        QAction deflistAct = menu.addAction(t("deflist"))
+        deflistAct.triggered.connect(this.onDefList)
         QAction hrAct = menu.addAction(t("rule"))
         hrAct.triggered.connect(this.onHr)
         QAction taskAct = menu.addAction(t("tasks"))
@@ -318,6 +344,34 @@ package class MarkdownViewer inherits QMainWindow {
 
     public onH3() {
         this.currentTab().runCommand("heading", "h3", "")
+    }
+
+    public onH4() {
+        this.currentTab().runCommand("heading", "h4", "")
+    }
+
+    public onH5() {
+        this.currentTab().runCommand("heading", "h5", "")
+    }
+
+    public onH6() {
+        this.currentTab().runCommand("heading", "h6", "")
+    }
+
+    public onItalic() {
+        this.currentTab().runCommand("italic", "", "")
+    }
+
+    public onStrike() {
+        this.currentTab().runCommand("strike", "", "")
+    }
+
+    public onQuote() {
+        this.currentTab().runCommand("blockquote", "", "")
+    }
+
+    public onDefList() {
+        this.currentTab().runCommand("insertDefList", "", "")
     }
 
     public onParagraph() {
@@ -349,6 +403,200 @@ package class MarkdownViewer inherits QMainWindow {
         }
         string linkText = str(textEdit.text())
         this.currentTab().runCommand("insertLink", url, linkText)
+    }
+
+    public onTable() {
+        QDialog dlg = QDialog(this)
+        dlg.setWindowTitle(t("dialog_insert_table"))
+        QSpinBox rowBox = QSpinBox()
+        rowBox.setMinimum(2)
+        rowBox.setMaximum(50)
+        rowBox.setValue(3)
+        QSpinBox colBox = QSpinBox()
+        colBox.setMinimum(1)
+        colBox.setMaximum(20)
+        colBox.setValue(3)
+        QFormLayout form = QFormLayout()
+        form.addRow(t("dialog_table_rows"), rowBox)
+        form.addRow(t("dialog_table_cols"), colBox)
+        QDialogButtonBox buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        QVBoxLayout box = QVBoxLayout(dlg)
+        box.addLayout(form)
+        box.addWidget(buttons)
+        if (dlg.exec() != QDialog.DialogCode.Accepted) {
+            return
+        }
+        this.currentTab().runCommand("insertTable", str(rowBox.value()), str(colBox.value()))
+    }
+
+    public onImageBrowse() {
+        var picked = QFileDialog.getOpenFileName(this, t("dialog_open_image"), this.startDir(), this.imageFilter())
+        string path = str(picked[0])
+        if (path == "") {
+            return
+        }
+        this.imageSrcEdit.setText(path)
+    }
+
+    public string imageFilter() {
+        return "Images (*.png *.jpg *.jpeg *.gif *.webp *.svg *.bmp);;" + t("all_files")
+    }
+
+    public bool isRemoteImage(string source) {
+        string lower = source.lower()
+        if (lower.startswith("http://")) {
+            return true
+        }
+        if (lower.startswith("https://")) {
+            return true
+        }
+        if (lower.startswith("data:")) {
+            return true
+        }
+        return false
+    }
+
+    public string uniqueImageDest(string destDir, string fileName) {
+        Path folder = Path(destDir)
+        Path dest = folder.joinpath(fileName)
+        if (!dest.exists()) {
+            return str(dest)
+        }
+        Path src = Path(fileName)
+        string stem = src.stem
+        string suffix = src.suffix
+        int n = 1
+        loop (dest.exists()) {
+            dest = folder.joinpath(stem + "-" + str(n) + suffix)
+            n++
+        }
+        return str(dest)
+    }
+
+    public string markdownImagePath(string docPath, string imagePath) {
+        Path docDir = Path(docPath).parent.resolve()
+        Path img = Path(imagePath).resolve()
+        if (str(img.drive).lower() != str(docDir.drive).lower()) {
+            return img.as_uri()
+        }
+        return str(os.path.relpath(str(img), str(docDir))).replace("\\", "/")
+    }
+
+    public onImage() {
+        QDialog dlg = QDialog(this)
+        dlg.setWindowTitle(t("dialog_insert_image"))
+        this.imageSrcEdit = QLineEdit()
+        QPushButton browseBtn = QPushButton(t("dialog_image_browse"))
+        browseBtn.clicked.connect(this.onImageBrowse)
+        QWidget srcRow = QWidget()
+        QHBoxLayout srcLayout = QHBoxLayout(srcRow)
+        srcLayout.setContentsMargins(0, 0, 0, 0)
+        srcLayout.addWidget(this.imageSrcEdit)
+        srcLayout.addWidget(browseBtn)
+        QLineEdit altEdit = QLineEdit()
+        QCheckBox copyBox = QCheckBox(t("dialog_image_copy"))
+        copyBox.setChecked(true)
+        QFormLayout form = QFormLayout()
+        form.addRow(t("dialog_image_src"), srcRow)
+        form.addRow(t("dialog_image_alt"), altEdit)
+        form.addRow("", copyBox)
+        QDialogButtonBox buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        QVBoxLayout box = QVBoxLayout(dlg)
+        box.addLayout(form)
+        box.addWidget(buttons)
+        if (dlg.exec() != QDialog.DialogCode.Accepted) {
+            return
+        }
+        string source = str(this.imageSrcEdit.text()).strip()
+        if (source == "") {
+            return
+        }
+        string altText = str(altEdit.text())
+        bool copyBeside = copyBox.isChecked()
+        string htmlSrc = source
+        string mdSrc = source
+        if (!this.isRemoteImage(source)) {
+            Path srcPath = Path(source)
+            if (!srcPath.is_file()) {
+                QMessageBox.warning(this, t("dialog_insert_image"), t("error_image_copy"))
+                return
+            }
+            EditorTab tab = this.currentTab()
+            nullable<string> docPath = tab.doc.getFilePath()
+            if (copyBeside) {
+                if (docPath == null) {
+                    QMessageBox.warning(this, t("dialog_insert_image"), t("error_image_unsaved"))
+                    return
+                }
+                Path imgDir = Path(docPath).parent.joinpath("images")
+                if (!imgDir.is_dir()) {
+                    imgDir.mkdir()
+                }
+                string dest = this.uniqueImageDest(str(imgDir), srcPath.name)
+                shutil.copy2(str(srcPath.resolve()), dest)
+                mdSrc = "images/" + Path(dest).name
+                htmlSrc = Path(dest).resolve().as_uri()
+            } else {
+                htmlSrc = srcPath.resolve().as_uri()
+                if (docPath == null) {
+                    mdSrc = htmlSrc
+                } else {
+                    mdSrc = this.markdownImagePath(docPath, str(srcPath.resolve()))
+                }
+            }
+        }
+        dict<string, string> payload = {
+            "html": htmlSrc,
+            "md": mdSrc,
+            "alt": altText
+        }
+        this.currentTab().runCommand("insertImage", json.dumps(payload), "")
+    }
+
+    public onExportPdf() {
+        EditorTab tab = this.currentTab()
+        string start = this.startDir()
+        var picked = QFileDialog.getSaveFileName(this, t("dialog_export_pdf"), start, "PDF (*.pdf)")
+        string path = str(picked[0])
+        if (path == "") {
+            return
+        }
+        this.pendingPdf = path
+        tab.view.page().runJavaScript("window.prepareExportPdf()", this.onPdfPrepared)
+    }
+
+    public onPdfPrepared(object _result) {
+        string path = this.pendingPdf
+        if (path == "") {
+            return
+        }
+        QPageLayout layout = QPageLayout(
+            QPageSize(QPageSize.PageSizeId.A4),
+            QPageLayout.Orientation.Portrait,
+            QMarginsF(12.0, 12.0, 12.0, 12.0),
+            QPageLayout.Unit.Millimeter
+        )
+        this.currentTab().view.page().printToPdf(path, layout)
+    }
+
+    public onPdfFinished(string path, bool success) {
+        int i = 0
+        loop (i < len(this.pages)) {
+            this.pages[i].view.page().runJavaScript("window.resetPrintLayout && window.resetPrintLayout()")
+            i++
+        }
+        this.pendingPdf = ""
+        if (!success) {
+            QMessageBox.warning(this, t("dialog_export_pdf"), t("error_pdf"))
+        }
     }
 
     public onBulletList() {
@@ -455,6 +703,10 @@ package class MarkdownViewer inherits QMainWindow {
         saveAsAct.triggered.connect(this.onSaveAs)
         fileMenu.addAction(saveAsAct)
         fileMenu.addSeparator()
+        QAction pdfAct = QAction(t("action_export_pdf"), this)
+        pdfAct.triggered.connect(this.onExportPdf)
+        fileMenu.addAction(pdfAct)
+        fileMenu.addSeparator()
         QAction exitAct = QAction(t("action_exit"), this)
         exitAct.triggered.connect(this.close)
         fileMenu.addAction(exitAct)
@@ -481,15 +733,45 @@ package class MarkdownViewer inherits QMainWindow {
         h3Act.setToolTip(t("h3_tip"))
         h3Act.triggered.connect(this.onH3)
         bar.addAction(h3Act)
+        QAction h4Act = QAction(t("h4"), this)
+        h4Act.setToolTip(t("h4_tip"))
+        h4Act.triggered.connect(this.onH4)
+        bar.addAction(h4Act)
+        QAction h5Act = QAction(t("h5"), this)
+        h5Act.setToolTip(t("h5_tip"))
+        h5Act.triggered.connect(this.onH5)
+        bar.addAction(h5Act)
+        QAction h6Act = QAction(t("h6"), this)
+        h6Act.setToolTip(t("h6_tip"))
+        h6Act.triggered.connect(this.onH6)
+        bar.addAction(h6Act)
         QAction textAct = QAction(t("text"), this)
         textAct.setToolTip(t("text_tip"))
         textAct.triggered.connect(this.onParagraph)
         bar.addAction(textAct)
+        QAction italicAct = QAction(t("italic"), this)
+        italicAct.setShortcut("Ctrl+I")
+        italicAct.setToolTip(t("italic_tip"))
+        italicAct.triggered.connect(this.onItalic)
+        bar.addAction(italicAct)
+        QAction strikeAct = QAction(t("strike"), this)
+        strikeAct.setShortcut("Ctrl+Shift+X")
+        strikeAct.setToolTip(t("strike_tip"))
+        strikeAct.triggered.connect(this.onStrike)
+        bar.addAction(strikeAct)
+        QAction quoteAct = QAction(t("quote"), this)
+        quoteAct.setToolTip(t("quote_tip"))
+        quoteAct.triggered.connect(this.onQuote)
+        bar.addAction(quoteAct)
         QAction linkAct = QAction(t("link"), this)
         linkAct.setShortcut("Ctrl+K")
         linkAct.setToolTip(t("link_tip"))
         linkAct.triggered.connect(this.onLink)
         bar.addAction(linkAct)
+        QAction imageAct = QAction(t("image"), this)
+        imageAct.setToolTip(t("image_tip"))
+        imageAct.triggered.connect(this.onImage)
+        bar.addAction(imageAct)
         QAction ulAct = QAction(t("list"), this)
         ulAct.setToolTip(t("list_tip"))
         ulAct.triggered.connect(this.onBulletList)
@@ -498,6 +780,14 @@ package class MarkdownViewer inherits QMainWindow {
         olAct.setToolTip(t("numbered_tip"))
         olAct.triggered.connect(this.onNumberList)
         bar.addAction(olAct)
+        QAction tableAct = QAction(t("table"), this)
+        tableAct.setToolTip(t("table_tip"))
+        tableAct.triggered.connect(this.onTable)
+        bar.addAction(tableAct)
+        QAction deflistAct = QAction(t("deflist"), this)
+        deflistAct.setToolTip(t("deflist_tip"))
+        deflistAct.triggered.connect(this.onDefList)
+        bar.addAction(deflistAct)
         QAction hrAct = QAction(t("rule"), this)
         hrAct.setToolTip(t("rule_tip"))
         hrAct.triggered.connect(this.onHr)

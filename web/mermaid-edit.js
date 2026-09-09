@@ -674,7 +674,7 @@
 
   function closeEditor(rerender) {
     if (!active) {
-      return;
+      return Promise.resolve();
     }
     var session = active;
     if (session.sourceArea) {
@@ -696,10 +696,11 @@
           hooks.scheduleNotify();
         }
       }
-      hooks.renderWidget(session.widget).then(function () {
+      return hooks.renderWidget(session.widget).then(function () {
         bindWidget(session.widget);
       });
     }
+    return Promise.resolve();
   }
 
   function switchToSource(session) {
@@ -1583,5 +1584,6 @@
     bind: bindAll,
     insert: insertKind,
     open: openEditor,
+    closeActive: closeEditor,
   };
 })(typeof window !== "undefined" ? window : globalThis);

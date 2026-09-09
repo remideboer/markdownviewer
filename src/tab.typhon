@@ -112,7 +112,15 @@ package class EditorTab inherits QWidget {
             return
         }
         string payload = json.dumps(this.doc.getContent())
-        this.view.page().runJavaScript("window.setMarkdown(" + payload + ")")
+        string base = ""
+        nullable<string> filePath = this.doc.getFilePath()
+        if (filePath != null) {
+            base = Path(filePath).parent.resolve().as_uri()
+            if (!base.endswith("/")) {
+                base = base + "/"
+            }
+        }
+        this.view.page().runJavaScript("window.setMarkdown(" + payload + ", " + json.dumps(base) + ")")
     }
 
     public runCommand(string name, string arg, string arg2) {

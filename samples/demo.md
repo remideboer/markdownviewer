@@ -1,6 +1,32 @@
 # Demo-document
 
-Dit is een **vet** voorbeeld met een [externe link](https://example.com).
+Dit is een **vet** en *cursief* voorbeeld, met ~~doorgehaalde~~ tekst en een [externe link](https://example.com).
+
+#### Kop 4
+
+##### Kop 5
+
+###### Kop 6
+
+> Een citaatblok.
+
+![Demo](images/demo.svg)
+
+| Naam | Rol |
+| --- | --- |
+| Ada | Ingenieur |
+| Grace | Programmeur |
+
+CPU
+: Processor
+
+RAM
+: Werkgeheugen
+
+```python
+def greet(name):
+    return f"Hello, {name}"
+```
 
 ---
 

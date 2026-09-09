@@ -8,10 +8,12 @@ The window is a small native shell with a Chromium editor inside. Menus and dial
 
 ## What you can do
 
-- Open, save, and save-as markdown (`.md` / `.markdown`)
-- Edit the rendered document: bold, headings, links, lists, a horizontal rule, and a task list
+- Open, save, save-as, and **export as PDF**
+- Edit the rendered document: bold, italic, strikethrough, headings (H1–H6), quotes, links, images, lists, tables, definition lists, a horizontal rule, and a task list
 - Toggle GFM checkboxes (`- [ ]` / `- [x]`); the change is written back into the file
-- Render fenced ` ```mermaid ` diagrams. Use **Diagram** to insert a type (flowchart, sequence, class, state, ER, C4, pie, gantt, and more). Double-click a diagram to edit it visually; the mermaid source is updated.
+- Insert local or remote images; a local file can be copied into an `images/` folder next to the markdown file
+- Render fenced code with syntax highlighting, and ` ```mermaid ` diagrams. Use **Diagram** to insert a type (flowchart, sequence, class, state, ER, C4, pie, gantt, and more). Double-click a diagram to edit it visually; the mermaid source is updated.
+- Export PDF from **File**. Diagrams stay on one page (they are scaled down if they would overflow).
 - Follow links with a normal click:
   - `http` / `https` / `mailto` open in the system browser
   - `#anker` scrolls in the current document
@@ -21,7 +23,7 @@ The window is a small native shell with a Chromium editor inside. Menus and dial
 
 Link *text* is edited by selecting it and using the **Link** toolbar button, not by clicking the link.
 
-Try `samples/demo.md`. It includes a rule, a checklist, a link to `samples/linked.md`, an external URL, and several Mermaid diagrams you can double-click to edit.
+Try `samples/demo.md`. It includes headings, a quote, a table, a definition list, an image, a checklist, a link to `samples/linked.md`, an external URL, and several Mermaid diagrams you can double-click to edit.
 
 ## Requirements
 
@@ -66,9 +68,10 @@ python -m transpiler run tests/test_document.typhon
 python -m transpiler run tests/test_links.typhon
 python -m transpiler run tests/test_i18n.typhon
 node tests/test_mermaid_flow.js
+node tests/test_markdown_extra.js
 ```
 
-These cover file load/save, resolving local markdown links, English/Dutch UI strings, and mermaid diagram round-trips.
+These cover file load/save, resolving local markdown links, English/Dutch UI strings, mermaid diagram round-trips, and GFM tables / definition lists / strikethrough.
 
 ## How it is put together
 

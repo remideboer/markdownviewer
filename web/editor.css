@@ -30,7 +30,10 @@ body {
 
 #doc h1,
 #doc h2,
-#doc h3 {
+#doc h3,
+#doc h4,
+#doc h5,
+#doc h6 {
   line-height: 1.25;
   margin: 1.4em 0 0.5em;
 }
@@ -47,6 +50,19 @@ body {
 
 #doc h3 {
   font-size: 1.2rem;
+}
+
+#doc h4 {
+  font-size: 1.08rem;
+}
+
+#doc h5 {
+  font-size: 1rem;
+}
+
+#doc h6 {
+  font-size: 0.92rem;
+  color: #4a453c;
 }
 
 #doc p {
@@ -100,6 +116,90 @@ body {
 #doc pre code {
   display: block;
   white-space: pre;
+}
+
+#doc img {
+  max-width: 100%;
+  height: auto;
+}
+
+#doc blockquote {
+  margin: 0.9em 0;
+  padding: 0.15em 0 0.15em 1em;
+  border-left: 4px solid #d9d0c2;
+  color: #4a453c;
+}
+
+#doc table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+
+#doc th,
+#doc td {
+  border: 1px solid #e0d9cc;
+  padding: 0.4em 0.65em;
+  text-align: left;
+  min-width: 3em;
+}
+
+#doc th {
+  background: #f6f3ec;
+  font-weight: 600;
+}
+
+#doc dl {
+  margin: 0.9em 0;
+}
+
+#doc dt {
+  font-weight: 600;
+}
+
+#doc dd {
+  margin: 0.2em 0 0.75em 1.4em;
+}
+
+#doc del {
+  color: #6b6458;
+}
+
+@media print {
+  html,
+  body,
+  #doc {
+    background: #fff;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .mmd-edit-bar,
+  .mmd-edit-hint,
+  .mmd-source {
+    display: none !important;
+  }
+
+  .mermaid-widget,
+  #doc table,
+  #doc pre,
+  #doc img,
+  #doc blockquote,
+  #doc dl {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .mermaid-widget.print-keep {
+    overflow: hidden;
+  }
+
+  .mermaid-widget {
+    border: 1px solid #ccc;
+    background: #fff;
+  }
 }
 
 .mermaid-widget {
