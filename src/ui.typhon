@@ -9,6 +9,7 @@ from pathlib import Path
 from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QTabBar, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget
 from PyQt6.QtGui import QAction, QDesktopServices, QPageLayout, QPageSize
 from PyQt6.QtCore import QUrl, QTimer, QMarginsF, Qt
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 import json
 import os
 import shutil
@@ -20,11 +21,13 @@ package class MarkdownViewer inherits QMainWindow {
     private QTimer titleTimer
     private string pendingPdf
     private QLineEdit imageSrcEdit
+    private QPrinter printer
 
     public constructor() {
         this.pages = []
         this.pendingPdf = ""
         this.imageSrcEdit = QLineEdit()
+        this.printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         this.setWindowTitle("MarkdownViewer")
         this.resize(960, 720)
         this.buildMenus()
@@ -77,6 +80,7 @@ package class MarkdownViewer inherits QMainWindow {
         EditorTab tab = EditorTab()
         tab.view.customContextMenuRequested.connect(this.onEditorContextMenu)
         tab.view.page().pdfPrintingFinished.connect(this.onPdfFinished)
+        tab.view.printFinished.connect(this.onPrintFinished)
         this.pages.append(tab)
         int plusAt = this.tabs.indexOf(this.plusPage)
         if (plusAt >= 0) {
@@ -690,15 +694,39 @@ package class MarkdownViewer inherits QMainWindow {
         this.currentTab().view.page().printToPdf(path, layout)
     }
 
-    public onPdfFinished(string path, bool success) {
+    public resetAllPrintLayout() {
         int i = 0
         loop (i < len(this.pages)) {
             this.pages[i].view.page().runJavaScript("window.resetPrintLayout && window.resetPrintLayout()")
             i++
         }
+    }
+
+    public onPdfFinished(string path, bool success) {
+        this.resetAllPrintLayout()
         this.pendingPdf = ""
         if (!success) {
             QMessageBox.warning(this, t("dialog_export_pdf"), t("error_pdf"))
+        }
+    }
+
+    public onPrint() {
+        this.currentTab().view.page().runJavaScript("window.prepareExportPdf()", this.onPrintPrepared)
+    }
+
+    public onPrintPrepared(object _result) {
+        QPrintDialog dlg = QPrintDialog(this.printer, this)
+        if (dlg.exec() != QDialog.DialogCode.Accepted) {
+            this.resetAllPrintLayout()
+            return
+        }
+        this.currentTab().view.print(this.printer)
+    }
+
+    public onPrintFinished(bool success) {
+        this.resetAllPrintLayout()
+        if (!success) {
+            QMessageBox.warning(this, t("action_print"), t("error_print"))
         }
     }
 
@@ -810,6 +838,10 @@ package class MarkdownViewer inherits QMainWindow {
         saveAsAct.triggered.connect(this.onSaveAs)
         fileMenu.addAction(saveAsAct)
         fileMenu.addSeparator()
+        QAction printAct = QAction(t("action_print"), this)
+        printAct.setShortcut("Ctrl+P")
+        printAct.triggered.connect(this.onPrint)
+        fileMenu.addAction(printAct)
         QAction pdfAct = QAction(t("action_export_pdf"), this)
         pdfAct.triggered.connect(this.onExportPdf)
         fileMenu.addAction(pdfAct)
