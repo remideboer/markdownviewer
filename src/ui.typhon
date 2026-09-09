@@ -7,12 +7,14 @@ from i18n import t
 from icons import toolbarIcon
 from pathlib import Path
 from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QTabBar, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout, QInputDialog, QComboBox, QMenu, QHBoxLayout, QPushButton, QCheckBox, QSpinBox, QWidget
-from PyQt6.QtGui import QAction, QDesktopServices, QPageLayout, QPageSize
-from PyQt6.QtCore import QUrl, QTimer, QMarginsF, Qt
-from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+from PyQt6.QtGui import QAction, QDesktopServices, QPageLayout, QPageSize, QPainter, QImage
+from PyQt6.QtCore import QUrl, QTimer, QMarginsF, Qt, QSize, QSizeF
+from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewDialog
+from PyQt6.QtPdf import QPdfDocument
 import json
 import os
 import shutil
+import tempfile
 
 package class MarkdownViewer inherits QMainWindow {
     private QTabWidget tabs
@@ -22,12 +24,20 @@ package class MarkdownViewer inherits QMainWindow {
     private string pendingPdf
     private QLineEdit imageSrcEdit
     private QPrinter printer
+    private QPdfDocument printPdf
+    private string previewPdfPath
+    private bool inPrintPreview
+    private bool printSucceeded
 
     public constructor() {
         this.pages = []
         this.pendingPdf = ""
+        this.previewPdfPath = ""
         this.imageSrcEdit = QLineEdit()
         this.printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        this.printPdf = QPdfDocument(this)
+        this.inPrintPreview = false
+        this.printSucceeded = true
         this.setWindowTitle("MarkdownViewer")
         this.resize(960, 720)
         this.buildMenus()
@@ -80,7 +90,6 @@ package class MarkdownViewer inherits QMainWindow {
         EditorTab tab = EditorTab()
         tab.view.customContextMenuRequested.connect(this.onEditorContextMenu)
         tab.view.page().pdfPrintingFinished.connect(this.onPdfFinished)
-        tab.view.printFinished.connect(this.onPrintFinished)
         this.pages.append(tab)
         int plusAt = this.tabs.indexOf(this.plusPage)
         if (plusAt >= 0) {
@@ -680,18 +689,21 @@ package class MarkdownViewer inherits QMainWindow {
         tab.view.page().runJavaScript("window.prepareExportPdf()", this.onPdfPrepared)
     }
 
-    public onPdfPrepared(object _result) {
-        string path = this.pendingPdf
-        if (path == "") {
-            return
-        }
-        QPageLayout layout = QPageLayout(
+    public QPageLayout printPageLayout() {
+        return QPageLayout(
             QPageSize(QPageSize.PageSizeId.A4),
             QPageLayout.Orientation.Portrait,
             QMarginsF(12.0, 12.0, 12.0, 12.0),
             QPageLayout.Unit.Millimeter
         )
-        this.currentTab().view.page().printToPdf(path, layout)
+    }
+
+    public onPdfPrepared(object _result) {
+        string path = this.pendingPdf
+        if (path == "") {
+            return
+        }
+        this.currentTab().view.page().printToPdf(path, this.printPageLayout())
     }
 
     public resetAllPrintLayout() {
@@ -702,7 +714,29 @@ package class MarkdownViewer inherits QMainWindow {
         }
     }
 
+    public cleanupPreviewPdf() {
+        this.printPdf.close()
+        string path = this.previewPdfPath
+        this.previewPdfPath = ""
+        if (path != "") {
+            if (os.path.exists(path)) {
+                os.remove(path)
+            }
+        }
+    }
+
+    public failPrintPreview() {
+        this.inPrintPreview = false
+        this.cleanupPreviewPdf()
+        this.resetAllPrintLayout()
+        QMessageBox.warning(this, t("action_print"), t("error_print"))
+    }
+
     public onPdfFinished(string path, bool success) {
+        if (this.inPrintPreview && this.previewPdfPath != "") {
+            this.onPrintPdfReady(success)
+            return
+        }
         this.resetAllPrintLayout()
         this.pendingPdf = ""
         if (!success) {
@@ -711,23 +745,79 @@ package class MarkdownViewer inherits QMainWindow {
     }
 
     public onPrint() {
+        if (this.inPrintPreview) {
+            return
+        }
+        if (this.pendingPdf != "") {
+            return
+        }
         this.currentTab().view.page().runJavaScript("window.prepareExportPdf()", this.onPrintPrepared)
     }
 
     public onPrintPrepared(object _result) {
-        QPrintDialog dlg = QPrintDialog(this.printer, this)
-        if (dlg.exec() != QDialog.DialogCode.Accepted) {
-            this.resetAllPrintLayout()
+        if (this.inPrintPreview) {
             return
         }
-        this.currentTab().view.print(this.printer)
+        this.inPrintPreview = true
+        this.printSucceeded = true
+        var tmp = tempfile.mkstemp(".pdf", "mdview-print-")
+        os.close(tmp[0])
+        this.previewPdfPath = str(tmp[1])
+        this.currentTab().view.page().printToPdf(this.previewPdfPath, this.printPageLayout())
     }
 
-    public onPrintFinished(bool success) {
-        this.resetAllPrintLayout()
+    public onPrintPdfReady(bool success) {
         if (!success) {
+            this.failPrintPreview()
+            return
+        }
+        this.printPdf.load(this.previewPdfPath)
+        if (this.printPdf.status() != QPdfDocument.Status.Ready) {
+            this.failPrintPreview()
+            return
+        }
+        if (this.printPdf.pageCount() < 1) {
+            this.failPrintPreview()
+            return
+        }
+        QPrintPreviewDialog dlg = QPrintPreviewDialog(this.printer, this)
+        dlg.paintRequested.connect(this.onPrintPaint)
+        dlg.exec()
+        this.inPrintPreview = false
+        this.cleanupPreviewPdf()
+        this.resetAllPrintLayout()
+        if (!this.printSucceeded) {
             QMessageBox.warning(this, t("action_print"), t("error_print"))
         }
+    }
+
+    public onPrintPaint(QPrinter previewPrinter) {
+        QPainter painter = QPainter()
+        if (!painter.begin(previewPrinter)) {
+            this.printSucceeded = false
+            return
+        }
+        int i = 0
+        int n = this.printPdf.pageCount()
+        loop (i < n) {
+            if (i > 0) {
+                previewPrinter.newPage()
+            }
+            QSizeF pt = this.printPdf.pagePointSize(i)
+            int w = int(pt.width() * 300.0 / 72.0)
+            int h = int(pt.height() * 300.0 / 72.0)
+            if (w < 1) {
+                w = 1
+            }
+            if (h < 1) {
+                h = 1
+            }
+            QImage image = this.printPdf.render(i, QSize(w, h))
+            var box = previewPrinter.pageRect(QPrinter.Unit.DevicePixel)
+            painter.drawImage(box, image)
+            i++
+        }
+        painter.end()
     }
 
     public onBulletList() {

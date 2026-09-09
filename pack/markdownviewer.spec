@@ -20,6 +20,7 @@ hiddenimports = [
     "PyQt6.QtWebEngineWidgets",
     "PyQt6.QtWebChannel",
     "PyQt6.QtPrintSupport",
+    "PyQt6.QtPdf",
     "PyQt6.sip",
     "document",
     "ui",
