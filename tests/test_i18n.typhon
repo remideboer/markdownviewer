@@ -12,7 +12,9 @@ function void assertTrue(string name, bool cond) {
 
 print("=== i18n ===")
 
-assertTrue("nl_NL", detectLanguage("nl_NL") == "nl")
+assertTrue("nl-NL", detectLanguage("nl-NL") == "nl")
+assertTrue("dutch windows", detectLanguage("Dutch_Netherlands") == "nl")
+assertTrue("en_NL region", detectLanguage("en_NL") == "nl")
 assertTrue("nl", detectLanguage("nl") == "nl")
 assertTrue("NL_BE", detectLanguage("NL_BE") == "nl")
 assertTrue("en_US", detectLanguage("en_US") == "en")

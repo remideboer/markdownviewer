@@ -1,0 +1,70 @@
+# Load Qt's own translations (dialogs, OK/Cancel) so they match the app language.
+
+from pathlib import Path
+from i18n import detectLanguage
+from PyQt6.QtCore import QLocale, QTranslator, QLibraryInfo
+from PyQt6.QtWidgets import QApplication
+import PyQt6
+
+QTranslator baseTr = QTranslator()
+QTranslator extraTr = QTranslator()
+
+function bool loadQm(QTranslator tr, string name, string folder) {
+    if (folder == "") {
+        return false
+    }
+    return tr.load(name, folder)
+}
+
+package function string detectAppLanguage() {
+    QLocale loc = QLocale.system()
+    if (loc.language() == QLocale.Language.Dutch) {
+        return "nl"
+    }
+    if (loc.territory() == QLocale.Country.Netherlands) {
+        return "nl"
+    }
+    if (detectLanguage(loc.name()) == "nl") {
+        return "nl"
+    }
+    if (detectLanguage(loc.bcp47Name()) == "nl") {
+        return "nl"
+    }
+    if (detectLanguage(str(loc.uiLanguages())) == "nl") {
+        return "nl"
+    }
+    return "en"
+}
+
+package function applyQtLanguage(QApplication app, string lang) {
+    if (lang == "nl") {
+        QLocale.setDefault(QLocale("nl_NL"))
+    } else {
+        QLocale.setDefault(QLocale("en_US"))
+    }
+    if (lang == "en") {
+        return
+    }
+    string libPath = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    Path bundled = Path(PyQt6.__file__).resolve().parent.joinpath("Qt6").joinpath("translations")
+    string bundledPath = ""
+    if (bundled.is_dir()) {
+        bundledPath = str(bundled)
+    }
+    string baseName = "qtbase_" + lang
+    bool baseLoaded = loadQm(baseTr, baseName, libPath)
+    if (!baseLoaded) {
+        baseLoaded = loadQm(baseTr, baseName, bundledPath)
+    }
+    if (baseLoaded) {
+        app.installTranslator(baseTr)
+    }
+    string extraName = "qt_" + lang
+    bool extraLoaded = loadQm(extraTr, extraName, libPath)
+    if (!extraLoaded) {
+        extraLoaded = loadQm(extraTr, extraName, bundledPath)
+    }
+    if (extraLoaded) {
+        app.installTranslator(extraTr)
+    }
+}

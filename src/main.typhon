@@ -2,23 +2,19 @@
 # Run: python -m transpiler run src/main.typhon
 # QApplication must exist before constructing a QMainWindow subclass.
 
-from PyQt6.QtCore import Qt, QLocale, QTranslator, QLibraryInfo
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 from paths import prepareWebEngine
-from i18n import setLanguage, detectLanguage, currentLanguage
+from i18n import setLanguage, currentLanguage
+from qtlang import applyQtLanguage, detectAppLanguage
 from ui import MarkdownViewer
 import sys
 
 prepareWebEngine()
 QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, true)
 QApplication qtApp = QApplication(sys.argv)
-setLanguage(detectLanguage(QLocale.system().name()))
-QTranslator qtTr = QTranslator()
-string transPath = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
-string qmName = "qtbase_" + currentLanguage()
-if (qtTr.load(qmName, transPath)) {
-    qtApp.installTranslator(qtTr)
-}
+setLanguage(detectAppLanguage())
+applyQtLanguage(qtApp, currentLanguage())
 MarkdownViewer window = MarkdownViewer()
 window.show()
 qtApp.exec()

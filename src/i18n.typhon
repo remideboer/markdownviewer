@@ -219,8 +219,20 @@ dict<string, string> NL = {
 }
 
 package function string detectLanguage(string localeName) {
-    string lower = localeName.lower()
+    string lower = localeName.lower().replace("-", "_")
     if (lower.startswith("nl")) {
+        return "nl"
+    }
+    if (lower.startswith("dutch")) {
+        return "nl"
+    }
+    if (lower.startswith("nederlands")) {
+        return "nl"
+    }
+    if (lower.find("_nl") >= 0) {
+        return "nl"
+    }
+    if (lower.find("nl_") >= 0) {
         return "nl"
     }
     return "en"

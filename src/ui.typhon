@@ -171,7 +171,7 @@ package class MarkdownViewer inherits QMainWindow {
             return
         }
         string startDir = this.startDir()
-        var picked = QFileDialog.getOpenFileName(this, t("dialog_open"), startDir, this.mdFilter())
+        var picked = QFileDialog.getOpenFileName(this, t("dialog_open"), startDir, this.mdFilter(), "", QFileDialog.Option.DontUseNativeDialog)
         string path = str(picked[0])
         if (path == "") {
             return
@@ -202,7 +202,7 @@ package class MarkdownViewer inherits QMainWindow {
     public onSaveAs() {
         EditorTab tab = this.currentTab()
         string startDir = this.startDir()
-        var picked = QFileDialog.getSaveFileName(this, t("dialog_save_as"), startDir, this.mdFilter())
+        var picked = QFileDialog.getSaveFileName(this, t("dialog_save_as"), startDir, this.mdFilter(), "", QFileDialog.Option.DontUseNativeDialog)
         string path = str(picked[0])
         if (path == "") {
             return
@@ -435,7 +435,7 @@ package class MarkdownViewer inherits QMainWindow {
     }
 
     public onImageBrowse() {
-        var picked = QFileDialog.getOpenFileName(this, t("dialog_open_image"), this.startDir(), this.imageFilter())
+        var picked = QFileDialog.getOpenFileName(this, t("dialog_open_image"), this.startDir(), this.imageFilter(), "", QFileDialog.Option.DontUseNativeDialog)
         string path = str(picked[0])
         if (path == "") {
             return
@@ -565,7 +565,7 @@ package class MarkdownViewer inherits QMainWindow {
     public onExportPdf() {
         EditorTab tab = this.currentTab()
         string start = this.startDir()
-        var picked = QFileDialog.getSaveFileName(this, t("dialog_export_pdf"), start, "PDF (*.pdf)")
+        var picked = QFileDialog.getSaveFileName(this, t("dialog_export_pdf"), start, "PDF (*.pdf)", "", QFileDialog.Option.DontUseNativeDialog)
         string path = str(picked[0])
         if (path == "") {
             return

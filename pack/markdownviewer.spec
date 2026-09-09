@@ -32,6 +32,7 @@ hiddenimports = [
     "links",
     "i18n",
     "icons",
+    "qtlang",
 ]
 
 for pkg in ("PyQt6.QtWebEngineCore", "PyQt6.QtWebEngineWidgets", "PyQt6.QtWebChannel"):
