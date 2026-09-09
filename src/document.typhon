@@ -1,6 +1,7 @@
 # Open document: path, markdown text, and dirty flag (content vs last save).
 
 from pathlib import Path
+from i18n import t
 
 package class MarkdownDocument {
     private string content
@@ -32,7 +33,7 @@ package class MarkdownDocument {
     public string displayName() {
         nullable<string> path = this.filePath
         if (path == null) {
-            return "Naamloos"
+            return t("untitled")
         }
         return Path(path).name
     }

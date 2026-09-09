@@ -3,12 +3,11 @@
 from paths import assetRoot
 from tab import EditorTab
 from links import classifyHref, resolveMarkdownLink
+from i18n import t
 from pathlib import Path
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QInputDialog, QTabWidget
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QFileDialog, QMessageBox, QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QVBoxLayout
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QUrl, QTimer
-
-string MD_FILTER = "Markdown (*.md *.markdown);;Alle bestanden (*.*)"
 
 package class MarkdownViewer inherits QMainWindow {
     private QTabWidget tabs
@@ -111,8 +110,8 @@ package class MarkdownViewer inherits QMainWindow {
         this.tabs.setCurrentWidget(tab)
         int answer = QMessageBox.question(
             this,
-            "Niet-opgeslagen wijzigingen",
-            "Er zijn niet-opgeslagen wijzigingen in " + tab.doc.displayName() + ". Toch doorgaan?"
+            t("unsaved_title"),
+            t("unsaved_body").replace("__NAME__", tab.doc.displayName())
         )
         return answer == QMessageBox.StandardButton.Yes
     }
@@ -154,13 +153,13 @@ package class MarkdownViewer inherits QMainWindow {
             return
         }
         string startDir = this.startDir()
-        var picked = QFileDialog.getOpenFileName(this, "Openen", startDir, MD_FILTER)
+        var picked = QFileDialog.getOpenFileName(this, t("dialog_open"), startDir, this.mdFilter())
         string path = str(picked[0])
         if (path == "") {
             return
         }
         if (!tab.doc.loadFrom(path)) {
-            QMessageBox.warning(this, "Openen", "Kon het bestand niet lezen.")
+            QMessageBox.warning(this, t("dialog_open"), t("error_read"))
             return
         }
         tab.pushMarkdown()
@@ -175,7 +174,7 @@ package class MarkdownViewer inherits QMainWindow {
             return
         }
         if (!tab.doc.save()) {
-            QMessageBox.warning(this, "Opslaan", "Kon het bestand niet schrijven.")
+            QMessageBox.warning(this, t("dialog_save"), t("error_write"))
             return
         }
         this.refreshTabLabels()
@@ -185,13 +184,13 @@ package class MarkdownViewer inherits QMainWindow {
     public onSaveAs() {
         EditorTab tab = this.currentTab()
         string startDir = this.startDir()
-        var picked = QFileDialog.getSaveFileName(this, "Opslaan als", startDir, MD_FILTER)
+        var picked = QFileDialog.getSaveFileName(this, t("dialog_save_as"), startDir, this.mdFilter())
         string path = str(picked[0])
         if (path == "") {
             return
         }
         if (!tab.doc.saveTo(path)) {
-            QMessageBox.warning(this, "Opslaan", "Kon het bestand niet schrijven.")
+            QMessageBox.warning(this, t("dialog_save"), t("error_write"))
             return
         }
         this.refreshTabLabels()
@@ -226,7 +225,7 @@ package class MarkdownViewer inherits QMainWindow {
         }
         string resolved = resolveMarkdownLink(base, href)
         if (resolved == "") {
-            QMessageBox.warning(this, "Link", "Kan deze link niet als markdown-bestand openen.")
+            QMessageBox.warning(this, t("dialog_link"), t("error_link"))
             return
         }
         int existing = this.indexOfPath(resolved)
@@ -237,7 +236,7 @@ package class MarkdownViewer inherits QMainWindow {
         }
         EditorTab tab = this.addEditorTab()
         if (!tab.doc.loadFrom(resolved)) {
-            QMessageBox.warning(this, "Link", "Kon het bestand niet lezen.")
+            QMessageBox.warning(this, t("dialog_link"), t("error_read"))
             int added = this.tabs.currentIndex()
             this.pages.pop(added)
             this.tabs.removeTab(added)
@@ -248,114 +247,133 @@ package class MarkdownViewer inherits QMainWindow {
         this.refreshTitle()
     }
 
+    public string mdFilter() {
+        return "Markdown (*.md *.markdown);;" + t("all_files")
+    }
+
     public onBold() {
-        this.currentTab().runCommand("bold", "")
+        this.currentTab().runCommand("bold", "", "")
     }
 
     public onH1() {
-        this.currentTab().runCommand("heading", "h1")
+        this.currentTab().runCommand("heading", "h1", "")
     }
 
     public onH2() {
-        this.currentTab().runCommand("heading", "h2")
+        this.currentTab().runCommand("heading", "h2", "")
     }
 
     public onH3() {
-        this.currentTab().runCommand("heading", "h3")
+        this.currentTab().runCommand("heading", "h3", "")
     }
 
     public onLink() {
-        var picked = QInputDialog.getText(this, "Link invoegen", "URL:")
-        if (!picked[1]) {
+        QDialog dlg = QDialog(this)
+        dlg.setWindowTitle(t("dialog_insert_link"))
+        QLineEdit urlEdit = QLineEdit()
+        QLineEdit textEdit = QLineEdit()
+        QFormLayout form = QFormLayout()
+        form.addRow(t("dialog_url"), urlEdit)
+        form.addRow(t("dialog_link_text"), textEdit)
+        QDialogButtonBox buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        QVBoxLayout box = QVBoxLayout(dlg)
+        box.addLayout(form)
+        box.addWidget(buttons)
+        if (dlg.exec() != QDialog.DialogCode.Accepted) {
             return
         }
-        string url = str(picked[0])
+        string url = str(urlEdit.text()).strip()
         if (url == "") {
             return
         }
-        this.currentTab().runCommand("createLink", url)
+        string linkText = str(textEdit.text())
+        this.currentTab().runCommand("insertLink", url, linkText)
     }
 
     public onBulletList() {
-        this.currentTab().runCommand("insertUnorderedList", "")
+        this.currentTab().runCommand("insertUnorderedList", "", "")
     }
 
     public onNumberList() {
-        this.currentTab().runCommand("insertOrderedList", "")
+        this.currentTab().runCommand("insertOrderedList", "", "")
     }
 
     public onHr() {
-        this.currentTab().runCommand("insertHorizontalRule", "")
+        this.currentTab().runCommand("insertHorizontalRule", "", "")
     }
 
     public onTaskList() {
-        this.currentTab().runCommand("insertTaskList", "")
+        this.currentTab().runCommand("insertTaskList", "", "")
     }
 
     public buildMenus() {
-        var fileMenu = this.menuBar().addMenu("&Bestand")
-        QAction newAct = QAction("&Nieuw", this)
+        var fileMenu = this.menuBar().addMenu(t("menu_file"))
+        QAction newAct = QAction(t("action_new"), this)
         newAct.setShortcut("Ctrl+N")
         newAct.triggered.connect(this.onNew)
         fileMenu.addAction(newAct)
-        QAction openAct = QAction("&Openen…", this)
+        QAction openAct = QAction(t("action_open"), this)
         openAct.setShortcut("Ctrl+O")
         openAct.triggered.connect(this.onOpen)
         fileMenu.addAction(openAct)
-        QAction saveAct = QAction("&Opslaan", this)
+        QAction saveAct = QAction(t("action_save"), this)
         saveAct.setShortcut("Ctrl+S")
         saveAct.triggered.connect(this.onSave)
         fileMenu.addAction(saveAct)
-        QAction saveAsAct = QAction("Opslaan &als…", this)
+        QAction saveAsAct = QAction(t("action_save_as"), this)
         saveAsAct.setShortcut("Ctrl+Shift+S")
         saveAsAct.triggered.connect(this.onSaveAs)
         fileMenu.addAction(saveAsAct)
         fileMenu.addSeparator()
-        QAction exitAct = QAction("A&fsluiten", this)
+        QAction exitAct = QAction(t("action_exit"), this)
         exitAct.triggered.connect(this.close)
         fileMenu.addAction(exitAct)
     }
 
     public buildToolbar() {
-        QToolBar bar = QToolBar("Opmaak")
+        QToolBar bar = QToolBar(t("toolbar_format"))
         bar.setMovable(false)
         this.addToolBar(bar)
-        QAction boldAct = QAction("Vet", this)
+        QAction boldAct = QAction(t("bold"), this)
         boldAct.setShortcut("Ctrl+B")
-        boldAct.setToolTip("Vet (Ctrl+B)")
+        boldAct.setToolTip(t("bold_tip"))
         boldAct.triggered.connect(this.onBold)
         bar.addAction(boldAct)
-        QAction h1Act = QAction("H1", this)
-        h1Act.setToolTip("Kop 1")
+        QAction h1Act = QAction(t("h1"), this)
+        h1Act.setToolTip(t("h1_tip"))
         h1Act.triggered.connect(this.onH1)
         bar.addAction(h1Act)
-        QAction h2Act = QAction("H2", this)
-        h2Act.setToolTip("Kop 2")
+        QAction h2Act = QAction(t("h2"), this)
+        h2Act.setToolTip(t("h2_tip"))
         h2Act.triggered.connect(this.onH2)
         bar.addAction(h2Act)
-        QAction h3Act = QAction("H3", this)
-        h3Act.setToolTip("Kop 3")
+        QAction h3Act = QAction(t("h3"), this)
+        h3Act.setToolTip(t("h3_tip"))
         h3Act.triggered.connect(this.onH3)
         bar.addAction(h3Act)
-        QAction linkAct = QAction("Link", this)
+        QAction linkAct = QAction(t("link"), this)
         linkAct.setShortcut("Ctrl+K")
-        linkAct.setToolTip("Link invoegen (Ctrl+K)")
+        linkAct.setToolTip(t("link_tip"))
         linkAct.triggered.connect(this.onLink)
         bar.addAction(linkAct)
-        QAction ulAct = QAction("Lijst", this)
-        ulAct.setToolTip("Opsomming")
+        QAction ulAct = QAction(t("list"), this)
+        ulAct.setToolTip(t("list_tip"))
         ulAct.triggered.connect(this.onBulletList)
         bar.addAction(ulAct)
-        QAction olAct = QAction("Genummerd", this)
-        olAct.setToolTip("Genummerde lijst")
+        QAction olAct = QAction(t("numbered"), this)
+        olAct.setToolTip(t("numbered_tip"))
         olAct.triggered.connect(this.onNumberList)
         bar.addAction(olAct)
-        QAction hrAct = QAction("Streep", this)
-        hrAct.setToolTip("Horizontale lijn")
+        QAction hrAct = QAction(t("rule"), this)
+        hrAct.setToolTip(t("rule_tip"))
         hrAct.triggered.connect(this.onHr)
         bar.addAction(hrAct)
-        QAction taskAct = QAction("Taken", this)
-        taskAct.setToolTip("Takenlijst")
+        QAction taskAct = QAction(t("tasks"), this)
+        taskAct.setToolTip(t("tasks_tip"))
         taskAct.triggered.connect(this.onTaskList)
         bar.addAction(taskAct)
     }

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from document import MarkdownDocument
+from i18n import setLanguage
 import tempfile
 
 function void assertTrue(string name, bool cond) {
@@ -14,13 +15,14 @@ function void assertTrue(string name, bool cond) {
 
 print("=== document io ===")
 
+setLanguage("en")
 string folder = tempfile.mkdtemp()
 string path = str(Path(folder).joinpath("note.md"))
 Path(path).write_text("# Hello\n\n**world**\n", encoding="utf-8")
 
 MarkdownDocument doc = MarkdownDocument()
 assertTrue("starts clean", doc.isDirty() == false)
-assertTrue("starts unnamed", doc.displayName() == "Naamloos")
+assertTrue("starts unnamed", doc.displayName() == "Untitled")
 assertTrue("loads", doc.loadFrom(path))
 assertTrue("content", doc.getContent().find("# Hello") >= 0)
 assertTrue("clean after load", doc.isDirty() == false)
@@ -39,7 +41,11 @@ assertTrue("save as", doc.saveTo(other))
 assertTrue("new name", doc.displayName() == "other.md")
 
 doc.clear()
-assertTrue("cleared name", doc.displayName() == "Naamloos")
+assertTrue("cleared name", doc.displayName() == "Untitled")
 assertTrue("cleared clean", doc.isDirty() == false)
+
+setLanguage("nl")
+assertTrue("untitled nl", doc.displayName() == "Naamloos")
+setLanguage("en")
 
 print("=== document io done ===")

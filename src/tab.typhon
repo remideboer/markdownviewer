@@ -3,9 +3,11 @@
 from paths import assetRoot
 from document import MarkdownDocument
 from bridge import EditorBridge
+from i18n import t, currentLanguage
 from pathlib import Path
-from PyQt6.QtCore import QUrl
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from PyQt6.QtCore import QUrl, Qt
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QMenu
+from PyQt6.QtGui import QAction
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEngineSettings
@@ -32,6 +34,8 @@ package class EditorTab inherits QWidget {
             QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls,
             true
         )
+        this.view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        this.view.customContextMenuRequested.connect(this.onContextMenu)
         this.view.loadFinished.connect(this.onEditorLoaded)
         QVBoxLayout layout = QVBoxLayout(this)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -46,7 +50,16 @@ package class EditorTab inherits QWidget {
             return
         }
         this.editorReady = true
+        this.pushUiStrings()
         this.pushMarkdown()
+    }
+
+    public pushUiStrings() {
+        if (!this.editorReady) {
+            return
+        }
+        string js = "window.setUiStrings(" + json.dumps(t("editor_placeholder")) + ", " + json.dumps(currentLanguage()) + ")"
+        this.view.page().runJavaScript(js)
     }
 
     public pushMarkdown() {
@@ -57,12 +70,55 @@ package class EditorTab inherits QWidget {
         this.view.page().runJavaScript("window.setMarkdown(" + payload + ")")
     }
 
-    public runCommand(string name, string arg) {
+    public runCommand(string name, string arg, string arg2) {
         if (!this.editorReady) {
             return
         }
-        string js = "window.execEditorCommand(" + json.dumps(name) + ", " + json.dumps(arg) + ")"
+        string js = "window.execEditorCommand(" + json.dumps(name) + ", " + json.dumps(arg) + ", " + json.dumps(arg2) + ")"
         this.view.page().runJavaScript(js)
+    }
+
+    public onContextMenu(object pos) {
+        QMenu menu = QMenu(this)
+        QAction undoAct = menu.addAction(t("undo"))
+        undoAct.triggered.connect(this.onUndo)
+        QAction redoAct = menu.addAction(t("redo"))
+        redoAct.triggered.connect(this.onRedo)
+        menu.addSeparator()
+        QAction cutAct = menu.addAction(t("cut"))
+        cutAct.triggered.connect(this.onCut)
+        QAction copyAct = menu.addAction(t("copy"))
+        copyAct.triggered.connect(this.onCopy)
+        QAction pasteAct = menu.addAction(t("paste"))
+        pasteAct.triggered.connect(this.onPaste)
+        menu.addSeparator()
+        QAction selectAct = menu.addAction(t("select_all"))
+        selectAct.triggered.connect(this.onSelectAll)
+        menu.exec(this.view.mapToGlobal(pos))
+    }
+
+    public onUndo() {
+        this.runCommand("undo", "", "")
+    }
+
+    public onRedo() {
+        this.runCommand("redo", "", "")
+    }
+
+    public onCut() {
+        this.runCommand("cut", "", "")
+    }
+
+    public onCopy() {
+        this.runCommand("copy", "", "")
+    }
+
+    public onPaste() {
+        this.runCommand("paste", "", "")
+    }
+
+    public onSelectAll() {
+        this.runCommand("selectAll", "", "")
     }
 
     public string tabLabel() {

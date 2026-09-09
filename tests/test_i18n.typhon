@@ -1,0 +1,42 @@
+# Language detection and catalog lookup (no Qt).
+
+from i18n import detectLanguage, setLanguage, t, currentLanguage
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== i18n ===")
+
+assertTrue("nl_NL", detectLanguage("nl_NL") == "nl")
+assertTrue("nl", detectLanguage("nl") == "nl")
+assertTrue("NL_BE", detectLanguage("NL_BE") == "nl")
+assertTrue("en_US", detectLanguage("en_US") == "en")
+assertTrue("de_DE", detectLanguage("de_DE") == "en")
+assertTrue("empty", detectLanguage("") == "en")
+
+setLanguage("en")
+assertTrue("lang en", currentLanguage() == "en")
+assertTrue("untitled en", t("untitled") == "Untitled")
+assertTrue("missing key", t("no_such_key") == "no_such_key")
+
+setLanguage("nl")
+assertTrue("lang nl", currentLanguage() == "nl")
+assertTrue("untitled nl", t("untitled") == "Naamloos")
+assertTrue("menu nl", t("menu_file") == "&Bestand")
+assertTrue("link text nl", t("dialog_link_text") == "Linktekst:")
+assertTrue("cut nl", t("cut") == "Knippen")
+
+setLanguage("en")
+assertTrue("link text en", t("dialog_link_text") == "Link text:")
+assertTrue("cut en", t("cut") == "Cut")
+
+setLanguage("fr")
+assertTrue("unknown falls to en", currentLanguage() == "en")
+assertTrue("untitled after fallback", t("untitled") == "Untitled")
+
+print("=== i18n done ===")

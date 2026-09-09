@@ -1,0 +1,130 @@
+# UI language catalog. No Qt — tests set the language explicitly.
+
+dict<string, string> state = {"lang": "en"}
+
+dict<string, string> EN = {
+    "untitled": "Untitled",
+    "menu_file": "&File",
+    "action_new": "&New",
+    "action_open": "&Open…",
+    "action_save": "&Save",
+    "action_save_as": "Save &as…",
+    "action_exit": "E&xit",
+    "dialog_open": "Open",
+    "dialog_save": "Save",
+    "dialog_save_as": "Save as",
+    "error_read": "Could not read the file.",
+    "error_write": "Could not write the file.",
+    "dialog_link": "Link",
+    "error_link": "Cannot open this link as a markdown file.",
+    "unsaved_title": "Unsaved changes",
+    "unsaved_body": "There are unsaved changes in __NAME__. Continue anyway?",
+    "dialog_insert_link": "Insert link",
+    "dialog_url": "URL:",
+    "dialog_link_text": "Link text:",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "select_all": "Select all",
+    "toolbar_format": "Format",
+    "bold": "Bold",
+    "bold_tip": "Bold (Ctrl+B)",
+    "h1": "H1",
+    "h1_tip": "Heading 1",
+    "h2": "H2",
+    "h2_tip": "Heading 2",
+    "h3": "H3",
+    "h3_tip": "Heading 3",
+    "link": "Link",
+    "link_tip": "Insert link (Ctrl+K)",
+    "list": "List",
+    "list_tip": "Bullet list",
+    "numbered": "Numbered",
+    "numbered_tip": "Numbered list",
+    "rule": "Rule",
+    "rule_tip": "Horizontal rule",
+    "tasks": "Tasks",
+    "tasks_tip": "Task list",
+    "all_files": "All files (*.*)",
+    "editor_placeholder": "Open a markdown file or start typing…"
+}
+
+dict<string, string> NL = {
+    "untitled": "Naamloos",
+    "menu_file": "&Bestand",
+    "action_new": "&Nieuw",
+    "action_open": "&Openen…",
+    "action_save": "&Opslaan",
+    "action_save_as": "Opslaan &als…",
+    "action_exit": "A&fsluiten",
+    "dialog_open": "Openen",
+    "dialog_save": "Opslaan",
+    "dialog_save_as": "Opslaan als",
+    "error_read": "Kon het bestand niet lezen.",
+    "error_write": "Kon het bestand niet schrijven.",
+    "dialog_link": "Link",
+    "error_link": "Kan deze link niet als markdown-bestand openen.",
+    "unsaved_title": "Niet-opgeslagen wijzigingen",
+    "unsaved_body": "Er zijn niet-opgeslagen wijzigingen in __NAME__. Toch doorgaan?",
+    "dialog_insert_link": "Link invoegen",
+    "dialog_url": "URL:",
+    "dialog_link_text": "Linktekst:",
+    "undo": "Ongedaan maken",
+    "redo": "Opnieuw",
+    "cut": "Knippen",
+    "copy": "Kopiëren",
+    "paste": "Plakken",
+    "select_all": "Alles selecteren",
+    "toolbar_format": "Opmaak",
+    "bold": "Vet",
+    "bold_tip": "Vet (Ctrl+B)",
+    "h1": "H1",
+    "h1_tip": "Kop 1",
+    "h2": "H2",
+    "h2_tip": "Kop 2",
+    "h3": "H3",
+    "h3_tip": "Kop 3",
+    "link": "Link",
+    "link_tip": "Link invoegen (Ctrl+K)",
+    "list": "Lijst",
+    "list_tip": "Opsomming",
+    "numbered": "Genummerd",
+    "numbered_tip": "Genummerde lijst",
+    "rule": "Streep",
+    "rule_tip": "Horizontale lijn",
+    "tasks": "Taken",
+    "tasks_tip": "Takenlijst",
+    "all_files": "Alle bestanden (*.*)",
+    "editor_placeholder": "Open een markdown-bestand of begin te typen…"
+}
+
+package function string detectLanguage(string localeName) {
+    string lower = localeName.lower()
+    if (lower.startswith("nl")) {
+        return "nl"
+    }
+    return "en"
+}
+
+package function setLanguage(string lang) {
+    if (lang == "nl") {
+        state["lang"] = "nl"
+    } else {
+        state["lang"] = "en"
+    }
+}
+
+package function string currentLanguage() {
+    return state["lang"]
+}
+
+package function string t(string key) {
+    dict<string, string> catalog = EN
+    if (state["lang"] == "nl") {
+        catalog = NL
+    }
+    var hit = catalog.get(key, key)
+    return str(hit)
+}

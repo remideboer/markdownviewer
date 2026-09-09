@@ -24,7 +24,7 @@ body {
 }
 
 #doc:empty::before {
-  content: "Open een markdown-bestand of begin te typen…";
+  content: attr(data-placeholder);
   color: #888;
 }
 

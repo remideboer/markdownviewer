@@ -69,7 +69,27 @@
     return String(text)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function insertLink(url, text) {
+    var article = document.getElementById("doc");
+    article.focus();
+    var selected = "";
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && article.contains(sel.anchorNode)) {
+      selected = sel.toString();
+    }
+    if (selected) {
+      document.execCommand("createLink", false, url);
+    } else {
+      var label = text || url;
+      var html =
+        '<a href="' + escapeHtml(url) + '">' + escapeHtml(label) + "</a>";
+      document.execCommand("insertHTML", false, html);
+    }
+    scheduleNotify();
   }
 
   function slugify(text) {
@@ -188,14 +208,24 @@
     scheduleNotify();
   }
 
+  window.setUiStrings = function (placeholder, lang) {
+    var article = document.getElementById("doc");
+    if (article && placeholder) {
+      article.setAttribute("data-placeholder", placeholder);
+    }
+    if (lang) {
+      document.documentElement.lang = lang;
+    }
+  };
   window.setMarkdown = setMarkdown;
-  window.execEditorCommand = function (name, arg) {
+  window.execEditorCommand = function (name, arg, arg2) {
     var article = document.getElementById("doc");
     article.focus();
     if (name === "heading") {
       document.execCommand("formatBlock", false, arg);
-    } else if (name === "createLink") {
-      document.execCommand("createLink", false, arg);
+    } else if (name === "insertLink") {
+      insertLink(arg, arg2 || "");
+      return;
     } else if (name === "insertTaskList") {
       insertTaskList();
       return;
